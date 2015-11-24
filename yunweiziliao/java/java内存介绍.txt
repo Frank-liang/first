@@ -1,0 +1,110 @@
+
+一、Java JVM内存介绍
+
+JVM管理两种类型的内存，堆和非堆。按照官方的说法：“Java 虚拟机具有一个堆，堆是运行时数据区域，所有类实例和数组的内存均从此处分配。堆是在 Java 虚拟机启动时创建的。”“在JVM中堆之外的内存称为非堆内存(Non-heap memory)”。简单来说堆就是Java代码可及的内存，是留给开发人员使用的；非堆就是JVM留给自己用的，所以方法区、JVM内部处理或优化所需的内存(如JIT编译后的代码缓存)、每个类结构(如运行时常数池、字段和方法数据)以及方法和构造方法的代码都在非堆内存中，它和堆不同，运行期内GC不会释放其空间。
+(1). 堆内存分配
+
+JVM初始分配的内存由-Xms指定，默认是物理内存的1/64；JVM最大分配的内存由-Xmx指 定，默认是物理内存的1/4。默认空余堆内存小于 40%时，JVM就会增大堆直到-Xmx的最大限制；空余堆内存大于70%时，JVM会减少堆直到-Xms的最小限制。因此服务器一般设置-Xms、 -Xmx相等以避免在每次GC 后调整堆的大小。可以利用JVM提供的-Xmn -Xms -Xmx等选项可进行堆内存设置，一般的要将-Xms和-Xmx选项设置为相同，而-Xmn为1/4的-Xmx值，建议堆的最大值设置为可用内存的最大值的80%。
+初始化堆的大小是JVM在启动时向系统申请的内存的大小。一般而言，这个参数不重要。但是有的应用程序在大负载的情况下会急剧地占用更多的内存，此时这个参数就是显得非常重要，如果JVM启动时设置使用的内存比较小而在这种情况下有许多对象进行初始化，JVM就必须重复地增加内存来满足使用。由于这种原因，我们一般把-Xms和-Xmx设为一样大，而堆的最大值受限于系统使用的物理内存。一般使用数据量较大的应用程序会使用持久对象，内存使用有可能迅速地增长。当应用程序需要的内存超出堆的最大值时JVM就会提示内存溢出，并且导致应用服务崩溃。所以，如果Xms超过了Xmx值，或者堆最大值和非堆最大值的总和超过了物理内存或者操作系统的最大限制都会引起服务器启动不起来。
+(2). 非堆内存分配
+
+也叫永久保存的区域，用于存放Class和Meta信息,Class在被Load的时候被放入该区域。它和存放类实例(Instance)的Heap区域不同,GC(Garbage Collection)不会在主程序运行期对PermGen space进行清理。JVM使用-XX:PermSize设置非堆内存初始值，默认是物理内存的1/64；由XX:MaxPermSize设置最大非堆内存的大小，默认是物理内存的1/4。 GC不会对PermGen space进行清理，所以如果你的APP会LOAD很多CLASS的话,就很可能出现PermGen space错误。
+(3). JVM内存限制(最大值)
+
+首先JVM内存限制于实际的最大物理内存，假设物理内存无限大的话，JVM内存的最大值跟操作系统有很大的关系。简单的说就32位处理器虽然可控内存空间有4GB,但是具体的操作系统会给一个限制，这个限制一般是2GB-3GB（一般来说Windows系统下为1.5G-2G，Linux系统 下为2G-3G），而64bit以上的处理器就不会有限制了。
+二、三种内存溢出异常介绍
+
+1. OutOfMemoryError： Java heap space 堆溢出
+
+内存溢出主要存在问题就是出现在这个情况中。当在JVM中如果98％的时间是用于GC且可用的 Heap size 不足2％的时候将抛出此异常信息。
+2. OutOfMemoryError： PermGen space 非堆溢出（永久保存区域溢出）
+
+这种错误常见在web服务器对JSP进行pre compile的时候。如果你的WEB APP下都用了大量的第三方jar, 其大小超过了jvm默认的大小(4M)那么就会产生此错误信息了。如果web app用了大量的第三方jar或者应用有太多的class文件而恰好MaxPermSize设置较小，超出了也会导致这块内存的占用过多造成溢出，或者tomcat热部署时侯不会清理前面加载的环境，只会将context更改为新部署的，非堆存的内容就会越来越多。
+3. OutOfMemoryError： unable to create new native thread. 无法创建新的线程
+
+这种现象比较少见，也比较奇怪，主要是和jvm与系统内存的比例有关。这种怪事是因为JVM已经被系统分配了大量的内存（比如1.5G），并且它至少要占用可用内存的一半。
+三、Java JVM内存配置
+
+1. JVM内存分配设置的参数有四个
+
+-Xmx Java Heap最大值，默认值为物理内存的1/4；
+-Xms Java Heap初始值，Server端JVM最好将-Xms和-Xmx设为相同值，开发测试机JVM可以保留默认值；
+-Xmn Java Heap Young区大小，不熟悉最好保留默认值；
+-Xss 每个线程的Stack大小，不熟悉最好保留默认值；
+-XX:PermSize：设定内存的永久保存区域；
+-XX:MaxPermSize：设定最大内存的永久保存区域；
+-XX:NewSize：设置JVM堆的‘新生代’的默认大小；
+-XX:MaxNewSize：设置JVM堆的‘新生代’的最大大小；
+2. 如何设置JVM的内存分配
+
+（1）当在命令提示符下启动并使用JVM时（只对当前运行的类Test生效）：
+java-Xmx128m-Xms64m-Xmn32m-Xss16m Test
+1
+（2）当在集成开发环境下（如eclipse）启动并使用JVM时：
+a. 在eclipse根目录下打开eclipse.ini，默认内容为（这里设置的是运行当前开发工具的JVM内存分配）： -vmargs -Xms40m -Xmx256m -vmargs表示以下为虚拟机设置参数，可修改其中的参数值，也可添加-Xmn，-Xss，另外，eclipse.ini内还可以设置非 堆内存，如：-XX:PermSize=56m，-XX:MaxPermSize=128m。
+b. 打开eclipse－窗口－首选项－Java－已安装的JRE（对在当前开发环境中运行的java程序皆生效） 编辑当前使用的JRE，在缺省VM参数中输入：-Xmx128m -Xms64m -Xmn32m –Xss16m。
+c. 打开eclipse－运行－运行－Java应用程序（只对所设置的java类生效） 选定需设置内存分配的类－自变量，在VM自变量中输入：-Xmx128m -Xms64m -Xmn32m -Xss16m 注：如果在同一开发环境中同时进行了b和c设置，则b设置生效，c设置无效，如： 开发环境的设置为：-Xmx256m，而类Test的设置为：-Xmx128m -Xms64m，则运行Test时生效的设置为： -Xmx256m -Xms64m。
+（3）当在服务器环境下（如Tomcat）启动并使用JVM时（对当前服务器环境下所以Java程序生效）：
+a. 设置环境变量： 变量名：CATALINA_OPTS 变量值：-Xmx128m -Xms64m -Xmn32m -Xss16m。
+b. 打开Tomcat根目录下的bin文件夹，编辑catalina.bat，将其中的%CATALINA_OPTS%（共有四处）替换为：-Xmx128m -Xms64m -Xmn32m -Xss16m。
+c. 若没有catalina.bat，只有tomcat.exe,tomcat6w.exe;则可以在启动tomcat6w.exe 后 右键配置–Java–java option 下面输入：
+-Xmx256m –Xms64m
+也可以找到注册表HKEY_LOCAL_MACHINE\SOFTWARE\Apache Software Foundation\TomcatService Manager\Tomcat6\Parameters\JavaOptions原值为 -Dcatalina.home=”C:\ApacheGroup\Tomcat 6.0″ -Djava.endorsed.dirs=”C:\ApacheGroup\Tomcat 6.0\common\endorsed” -Xrs 加入 -Xms300m -Xmx350m 重起tomcat服务,设置生效。
+（4）在Linux下设置Tomcat的java虚拟机内存
+a.查看catalina.sh
+ 
+1
+2
+3
+4
+5
+if[-r"$CATALINA_BASE/bin/setenv.sh"];then
+"$CATALINA_BASE/bin/setenv.sh"
+elif[-r"$CATALINA_HOME/bin/setenv.sh"];then
+"$CATALINA_HOME/bin/setenv.sh"
+fi
+b.在tomcat的bin目录下查看是否有setenv.sh,如果没有则创建，然后添加如下内容
+ 
+1
+2
+export JAVA_OPTS=${JAVA_OPTS}'-server -Xms256m -Xmx256m -XX:PermSize=128M -XX:MaxPermSize=256m'
+export CATALINA_OPTS=${CATALINA_OPTS}'-Dnet.spy.log.LoggerImpl=net.spy.memcached.compat.log.SunLogger'
+3. 查看JVM内存信息
+
+Runtime.getRuntime().maxMemory(); //最大可用内存，对应-Xmx
+Runtime.getRuntime().freeMemory(); //当前JVM空闲内存
+Runtime.getRuntime().totalMemory(); //当前JVM占用的内存总数，其值相当于当前JVM已使用的内存及freeMemory()的总和
+关于maxMemory()，freeMemory()和totalMemory()：maxMemory()为JVM的最大可用内存，可通过-Xmx设置，默认值为物理内存的1/4，设置不能高于计算机物理内存； totalMemory()为当前JVM占用的内存总数，其值相当于当前JVM已使用的内存及freeMemory()的总和，会随着JVM使用内存的增加而增加； freeMemory()为当前JVM空闲内存，因为JVM只有在需要内存时才占用物理内存使用，所以freeMemory()的值一般情况下都很小，而JVM实际可用内存并不等于freeMemory()，而应该等于maxMemory()-totalMemory()+freeMemory()。
+4. 实例，以下给出1G内存环境下java jvm 的参数设置参考
+
+ 
+1
+JAVA_OPTS=”-server-Xms800m-Xmx800m-XX:PermSize=64M-XX:MaxNewSize=256m-XX:MaxPermSize=128m-Djava.awt.headless=true”
+大型的web工程，用tomcat默认分配的内存空间无法启动，如果不是在myeclipse中启动tomcat可以对tomcat这样设置：
+TOMCAT_HOME\bin\catalina.bat 中添加这样一句话：
+1
+set JAVA_OPTS=-Xms800m-Xmx800m-XX:PermSize=64m-XX:MaxPermSize=128m-XX:NewSize=128m-XX:MaxNewSize=256m
+如果要在myeclipse中启动，上述的修改就不起作用了，可如下设置：
+Myeclipse->preferences->myeclipse->servers->tomcat->tomcat×.×->JDK面板中的
+Optional Java VM arguments中添加：-Xmx1024M -Xms512M -XX:MaxPermSize=256m
+对于单独的.class，可以用下面的方法对Test运行时的jvm内存进行设置。 java -Xms64m -Xmx256m Test -Xms是设置内存初始化的大小 -Xmx是设置最大能够使用内存的大小。
+四、JVM内存配置与GC
+
+需要考虑的是Java提供的垃圾回收机制。JVM的堆大小决定了JVM花费在收集垃圾上的时间和频度。收集垃圾可以接受的速度与应用有关，应该通过分析实际的垃圾收集的时间和频率来调整。如果堆的大小很大，那么完全垃圾收集就会很慢，但是频度会降低。如果你把堆的大小和内存的需要一致，完全收集就很快，但是会更加频繁。调整堆大小的的目的是最小化垃圾收集的时间，以在特定的时间内最大化处理客户的请求。在基准测试的时候，为保证最好的性能，要把堆的大小设大，保证垃圾收集不在整个基准测试的过程中出现。如果系统花费很多的时间收集垃圾，请减小堆大小。一次完全的垃圾收集应该不超过 3-5 秒。如果垃圾收集成为瓶颈，那么需要指定堆的大小，检查垃圾收集的详细输出，研究垃圾收集参数对性能的影响。一般说来，你应该使用物理内存的 80% 作为堆大小。当增加处理器时，记得增加内存，因为分配可以并行进行，而垃圾收集不是并行的。
+Java Heap分为3个区：
+1.Young 2.Old 3.Permanent。Young保存刚实例化的对象。当该区被填满时，GC会将对象移到Old区。Permanent区则负责保存反射对象，本文不讨论该区。
+JVM有2个GC线程：
+第一个线程负责回收Heap的Young区；
+第二个线程在Heap不足时，遍历Heap，将Young 区升级为Older区，Older区的大小等于-Xmx减去-Xmn，不能将-Xms的值设的过大，因为第二个线程被迫运行会降低JVM的性能。
+为什么一些程序频繁发生GC？有如下原因：
+1. 程序内调用了System.gc()或Runtime.gc()。
+2. 一些中间件软件调用自己的GC方法，此时需要设置参数禁止这些GC。
+3. Java的Heap太小，一般默认的Heap值都很小。
+4. 频繁实例化对象，Release对象 此时尽量保存并重用对象，例如使用StringBuffer()和String()。
+如果你发现每次GC后，Heap的剩余空间会是总空间的50%，这表示你的Heap处于健康状态许多Server端的Java程序每次GC后最好能有65%的剩余空间。
+经验之谈：
+1．Server端JVM最好将-Xms和-Xmx设为相同值。为了优化GC，最好让-Xmn值约等于-Xmx的1/3。
+2．一个GUI程序最好是每10到20秒间运行一次GC，每次在半秒之内完成。
+注意：
+1．增加Heap的大小虽然会降低GC的频率，但也增加了每次GC的时间。并且GC运行时，所有的用户线程将暂停，也就是GC期间，Java应用程序不做任何工作。
+2．Heap大小并不决定进程的内存使用量。进程的内存使用量要大于-Xmx定义的值，因为Java为其他任务分配内存，例如每个线程的Stack等。

@@ -1,0 +1,153 @@
+netstat -napo |grep "php-fpm" | wc -l   查看fastcgi的进程
+ps -A --sort -rss -o comm,pmem,pcpu |uniq -c |head -15  查内存消耗
+pmap $(pgrep php-cgi |head -1)  一个php-cgi  占用的内存
+curl http://127.0.0.1:9898/php-fpm_status
+curl http://127.0.0.1:9898/php-fpm_status?full    9898 是nginx开的端口 full  全部
+
+
+php-fpm状态的详解
+1. 启用php-fpm状态功能
+默认情况下为/status，当然也可以改成其他的，例如/ttlsa_status等等。
+# cat  /usr/local/php-5.5.10/etc/php-fpm.conf | grep status_path
+pm.status_path = /status
+2. nginx配置
+在默认主机里面加上location或者你希望能访问到的主机里面。
+server {
+    listen  *:80 default_server;
+    server_name _;
+    location ~ ^/(status|ping)$
+    {
+        include fastcgi_params;
+        fastcgi_pass 127.0.0.1:9000;
+        fastcgi_param SCRIPT_FILENAME $fastcgi_script_name;
+    }
+}
+3. 重启nginx/php-fpm
+请依照你的环境重启你的nginx和php-fpm
+# service nginx restart
+# service php-fpm restart
+4. 打开status页面
+# curl http://www.ttlsa.com/status
+pool:                 www
+process manager:      dynamic
+start time:           14/May/2014:22:40:15 +0800
+start since:          58508
+accepted conn:        33
+listen queue:         0
+max listen queue:     8
+listen queue len:     0
+idle processes:       2
+active processes:     1
+total processes:      3
+max active processes: 5
+max children reached: 0
+slow requests:        2091
+5. php-fpm status详解
+pool – fpm池子名称，大多数为www
+process manager – 进程管理方式,值：static, dynamic or ondemand. dynamic
+start time – 启动日期,如果reload了php-fpm，时间会更新
+start since – 运行时长
+accepted conn – 当前池子接受的请求数
+listen queue – 请求等待队列，如果这个值不为0，那么要增加FPM的进程数量
+max listen queue – 请求等待队列最高的数量
+listen queue len – socket等待队列长度
+idle processes – 空闲进程数量
+active processes – 活跃进程数量
+total processes – 总进程数量
+max active processes – 最大的活跃进程数量（FPM启动开始算）
+max children reached - 大道进程最大数量限制的次数，如果这个数量不为0，那说明你的最大进程数量太小了，请改大一点。
+slow requests – 启用了php-fpm slow-log，缓慢请求的数量
+6. php-fpm其他参数
+php-fpm状态页比较个性化的一个地方是它可以带参数，可以带参数json、xml、html并且前面三个参数可以分别和full做一个组合。
+6.1 json
+# curl http://127.0.0.1/status?json
+{"pool":"www","process manager":"dynamic","start time":1400078415,"start since":59624,"accepted conn":27,"listen queue":0,"max listen queue":8,"listen queue len":0,"idle processes":2,"active processes":1,"total processes":3,"max active processes":5,"max children reached":0,"slow requests":2145}
+6.2 xml
+# curl http://127.0.0.1/status?xml
+<?xml version="1.0" ?>
+<status>
+<pool>www</pool>
+<process-manager>dynamic</process-manager>
+<start-time>1400078415</start-time>
+<start-since>59640</start-since>
+<accepted-conn>36</accepted-conn>
+<listen-queue>0</listen-queue>
+<max-listen-queue>8</max-listen-queue>
+<listen-queue-len>0</listen-queue-len>
+<idle-processes>2</idle-processes>
+<active-processes>1</active-processes>
+<total-processes>3</total-processes>
+<max-active-processes>5</max-active-processes>
+<max-children-reached>0</max-children-reached>
+<slow-requests>2145</slow-requests>
+6.3 html
+# curl http://127.0.0.1/status?html
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><title>PHP-FPM Status Page</title></head>
+<body>
+<table>
+<tr><th>pool</th><td>www</td></tr>
+<tr><th>process manager</th><td>dynamic</td></tr>
+<tr><th>start time</th><td>14/May/2014:22:40:15 +0800</td></tr>
+<tr><th>start since</th><td>59662</td></tr>
+<tr><th>accepted conn</th><td>8</td></tr>
+<tr><th>listen queue</th><td>0</td></tr>
+<tr><th>max listen queue</th><td>8</td></tr>
+<tr><th>listen queue len</th><td>0</td></tr>
+<tr><th>idle processes</th><td>2</td></tr>
+<tr><th>active processes</th><td>1</td></tr>
+<tr><th>total processes</th><td>3</td></tr>
+<tr><th>max active processes</th><td>5</td></tr>
+<tr><th>max children reached</th><td>0</td></tr>
+<tr><th>slow requests</th><td>2147</td></tr>
+</table>
+</body></html>
+6.4 full
+# curl http://127.0.0.1/status?full
+pool:                 www
+process manager:      dynamic
+start time:           14/May/2014:22:40:15 +0800
+start since:          59695
+accepted conn:        1
+listen queue:         0
+max listen queue:     8
+listen queue len:     0
+idle processes:       2
+active processes:     1
+total processes:      3
+max active processes: 5
+max children reached: 0
+slow requests:        2148
+
+************************
+pid:                  29050
+state:                Idle
+start time:           15/May/2014:15:09:32 +0800
+start since:          338
+requests:             62
+request duration:     1025585
+request method:       GET
+request URI:          /index.php
+content length:       0
+user:                 -
+script:               /data/site/www.ttlsa.com/index.php
+last request cpu:     45.83
+last request memory:  24903680
+.....省略几个PID....
+6.5 full详解
+pid – 进程PID，可以单独kill这个进程. You can use this PID to kill a long running process.
+state – 当前进程的状态 (Idle, Running, …)
+start time – 进程启动的日期
+start since – 当前进程运行时长
+requests – 当前进程处理了多少个请求
+request duration – 请求时长（微妙）
+request method – 请求方法 (GET, POST, …)
+request URI – 请求URI
+content length – 请求内容长度 (仅用于 POST)
+user – 用户 (PHP_AUTH_USER) (or ‘-’ 如果没设置)
+script – PHP脚本 (or ‘-’ if not set)
+last request cpu – 最后一个请求CPU使用率。
+last request memorythe - 上一个请求使用的内存
+7. 完成
+php-fpm状态页非常使用，使用zabbix或者nagios监控可以考虑使用xml或者默认方式。用web的话，推荐使用html，表格会比较清晰。

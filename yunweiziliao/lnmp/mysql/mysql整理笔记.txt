@@ -1,0 +1,475 @@
+    mysql的安装，最好是安装二进制包，根据马哥的mysql二进制包安装的过程进项安装  
+          mysql 获得帮助的途径   1 官网手册（chm文件）    2  mysql 客户端工具 
+        登录mysql
+        mysql> help
+                    help contents   或者  ？contents      ？show
+                    help  更细化的项目
+                ctrl +l   =   clear
+                \c     或者  ；  结束错误命令
+                connect  +数据库名称+localhost （如果被踢掉，然后链接）
+                delimiter ！！  当输入完成后，然后！！，才开始执行
+                edit         输入的语句的修改
+                pager      控制屏幕输出 （输出的数据太多，分频控制）    例如 pager less   pager more   
+                nopager   解除pqger设置
+                tee           屏幕显示的输出或命令，输入一个文件     例如  tee /tmp/rst.txt
+                notee       解除tee
+                prompt    change mysql prompt
+                source     执行sql文件
+                system        调用linux的命令   例如  system ls  -a； 
+                status        服务器当前的状态信息
+                charset         字符集的设置         例如  charset uft8；
+                rehash        自动补全功能      在my.cnf中 [mysql]组中  添加 auto-hash，没有tab键好使
+                
+1        查看mysql是否开通  mysqladmin ping
+                               ps -ef | grep mysql
+2         mysql 的链接        mysql -S mysql.sock --protocal=tcp/socket
+                        mysql -uroot -h localhost  -p  -p 3306       -e  直接执行的命令
+3        mysqladmin --help | less
+    mysqladmin -uroot -p 
+            create DATABASE
+                drop DATABASE
+                ping
+                processlist
+                statue
+                     --sleep N  显示频率 多长时间刷新一次
+                         --count N  显示多个状态  显示几次
+            extended-status 显示状态变量
+        variables   显示服务器变量
+        flush-privileges: 让mysqld重读授权表, 等同于reload；
+            flush-status: 重置大多数的服务器状态变量
+            flush-logs: 二进制和中继日志滚动
+            flush-hosts: 
+            refresh: 相当于同时执行flush-hosts和flush-logs
+            shutdown: 关闭mysql服务器进程
+            version: 服务器版本及当前状态信息；
+            start-slave: 启动复制，启动从服务器复制线程；
+                    SQL thread
+                    IO thread
+            stop-slave: 关闭复制；                
+                         
+        mysqlimport --help | less
+        mysqldump  --help | less
+        mysqlshow db_name -u -p  显示库里面表的明细   mysqlshow  -u -p   显示库的明细           mysqlshow db_name table_name -u -p 显示列的明细
+
+4         select now(),version(),user();查看当前时间 版本 用户
+        create database data_name；   建立数据库
+        use data_name;                       进入数据库
+        create table table_name （id int，name varchar（20））；  建立表
+        desc table_name；or   explain table_name； or         show fields from table_name；        查看表结构
+        insert into table_name values （   ，‘’    ）；    表中插入数据
+        select *　from table_name;        查询表
+        delete from table_name :           删除表
+        truncate table table_name：        删除表
+        drop db_name；                删除库
+        select distinct engine from table_name;查看表所支持的引擎
+        order by 查询排序  默认升序  asc 升序     desc 降序
+        select concat（  ，   ，  ，）as  new_name from table_name；  几列合并到一起的作为一个新列的查询
+        YRAE() MONTH() DAYOFYEAR()     函数的使用   SELECT  NAME, birth FROM TABLE WHERE MONTH(birth) = 3;
+        CURDATE()   SELECT  NAME, birth FROM TABLE WHERE MONTH(birth) = MONTH(CURDATE());
+        TIMESTAMPDIFF ()    计算时间间隔的函数  
+        DATE_ADD()  DATE_SUB()    需要输入日起值  和时间间隔值  
+        INTERVAL  YEAR MONTH DAY   时间间隔
+        select @birth ：= birth from table； 设置变量 （@birth ：）  以后可以直接使用
+        COUNT  数数的函数     DISTINCT  统计不同的函数   MIN() MAX() SUM() AVG()  WITH ROLLUP 总计
+5        二进制日志（不包含不修改数据的记录），用来数据恢复，主从复制，打开二进制日志给性能带来百分之一的损耗。
+        命令行参数
+         查询二进制日志的命令：
+        show binary logs；    show master logs；查看生成的二进制日志数
+        SHOW MASTER STATUS;
+        SHOW BINLOG EVENTS IN '二进制日志文件名' [FROM pos]；
+        PURGE BINARY LOGS TO '某二进制日志文件'
+        二进制日志的工具 mysqlbinlog 二进制日志名全名
+        mysqlbinlog
+                --start-datetime
+                --stop-datetime
+
+                --start-position
+                --stop-position
+        
+        show character set;  查询服务器有哪些字符集  
+        show   collation；  产看排序方法 
+        show variables like '%character_set%'; 查看字符集
+        show variables like ‘%collation_%’; 查看排序方式
+        show variables like 'autocommit';       查看事物是否自动提交
+        show table status like ‘user’； 查看user表的信息
+        set session transaction isolation  level （read uncommit, read commit, repeatable  read, serializable)     设置事物的隔离
+        事物中禁用了aotocommit  ，可以使用 lock tables   一般情况不需要使用lock tables
+        flush logs；        日志的切换
+        reset master；        初始化日志（慎用）
+        showvariableslike'%expire_logs_days%';  查看二进制日志保留的天数
+     show master logs：                         查看保留的二进制日志
+     slave stop;
+         SET GLOBAL SQL_SLAVE_SKIP_COUNTER = 1;
+         slave start;                                                              以上三步主从复制跳过错误
+        purge binary logs to 'mysql-bin.000008';          mysql-bin.000008之前的日志全部删掉
+        expire_logs_days =5（5天之前的删除）变量      指定日志的失效期
+        --log-bin=  二进制日志的存放文件
+        --log-bin--index[=file]
+        --binlog-do-db=db_name         只打开这个数据库的日志
+        --binlog-ignore-db=db_name   除了这个数据库，打开其他的库的日志
+        系统变量
+                binlog_cache_size        binlog 的缓存
+        max_binlog_cache_size    最大的缓存数
+        max_binlog_size        最大的一个binlog日志大小
+        binlog_cache_use         当前的内存使用量
+        binlog_cache_disk_cache     磁盘上的存放的缓存
+        sync_ binlog  磁盘同步缓存的设置
+        binlog_format （日志形式）：statement（生成语句）row（行模式，计算机读懂的语句） mixed （混合形式）
+        查看日志内容 mysqlbinlog 日志名 （statement模式）
+        设置 set session binlog_format
+                set global binlog_format
+           
+6        查询日志 guery log 记录mysql在操作中的所有记录（客户端） 目的 排错
+        删除的时候 ，需要删除文件非逻辑文件（想二进制日志的生成方式）
+        在mysql的命令中打开log选项的时候，同时打开general_log     例如 set global log=1；
+        在my.cof的设置
+        general_log=1
+        general_log_file=/tmp/mysqllog.log
+        （一般的情况不打开这个日志，出问题的时候打开检查问题，如果打开的话对系统的影响较大）
+        如果要删除这个日志的话
+        rm -rf  log.name   ； mysqladmin flush-logs
+        如果是这个日志有用的话，就改名字，然后生成新的日志
+7        慢查询日志 slow query log 记录执行时长超过一定时间的sql    目的 性能调优
+        打开慢查询日志
+        slow_query_log=1；
+        slow_query_log_file=
+
+        long_query_time  设置时长
+        log_queries_not_using_indexes  查询没有设置索引
+        支持的最短的时间是 1秒 ，如果时间更短的话，需要打补丁
+        mysqldumpshow  -- help    分析慢查询日志工具
+        mysqldumpshow   参数  慢查询日志文件
+8        innodb redo log  作用 灾难恢复   提高I/O性能
+        系统变量：
+        innodb_log_buffer_size  日志缓存大小，同步到磁盘，太大浪费内存，太小影响性能
+        innodb_log_file_size              存放日志文件的大小
+        innodb_os_log_written    多少日志写到日志文件里面，产生日志的频率，累加的
+        innodb_os_log_fsyncs     网磁盘写日志的次数
+        innodb_flush_method=O_DIRECT  跳过文件系统缓存区，提高I/O性能
+        innodb_log_files_in_group        定义redo日志文件的个数（在配置文件），默认两个，如果想设置3个或多个的话，干净关闭之后，需要把之前的两个日志文件移走。然后重启
+        innodb_log_group_home_dir    redo日志组存放的目录，修改之前，需要把之前的日志移动到修改后的目录里面
+        innodb_flush_log_at_trx_commit    设置为0时  日志缓存每一秒写到日志文件,刷新到磁盘上,mysql崩溃丢失1秒的数据，不经过缓存
+                                                      设置为1时  每个事物提交时，写到日志文件，刷新到磁盘
+                                                      设置为2是   每个事物提交，写到文件（写到缓存区）但不立即刷新到磁盘，系统自己决定什么时候刷新到磁盘
+9        数据文件        共享表空间和单独表空间    由 innodb_file_per_table  
+                不同的引擎所生成的表的文件也不同 
+10        体系结构
+                                                                                                                                                    查询缓存模块
+11        执行流程        初始化模块--->链接管理模块--->线程管理模块---->用户模块---->命令分发器----->命令解析器
+                                                                             日志模块记录
+        max_connections   最大连接数
+        max_user_connections         单个用户的最大连接数
+        show global status like‘%connect%’；
+        Aborted_connects        多少的链接被拒绝
+        connections        目前一共被链接的次数
+        max_used_connections   记录最大的连接数
+        threads_connected      当前链接的多少线程
+        thread_cache_size = 100 线程的缓存（等于长连接） 100 指的是缓存100个线程
+12        存储引擎
+        show create table table_name;     或  show table status like ‘table_name’；   查看表的引擎
+        select * from tables where table_name='';
+        myisam引擎  ：1  自动增长列（主键或主键的一个列），自动增长列的初始数字可以设置，可以查询最后插入都的行数。
+        myisam作为引擎的话建表，可以指定数据目录和索引目录，但目录已经建立，同时用户为mysql（默认数据和索引在一个目录）
+        myisampack    压缩myisam表 压缩后的表 变小  只读   myisampack table_name；（退出mysql，在数据文件的目录执行）压缩之前做备份
+        instr 函数 搜索字符串的关键字  help instr
+        myisam   表级锁   加锁(读锁，写锁）             ？lock 
+        查询的优先级 high_priority   增，删，改的优先级low_priority  例如  select hihg_priority *　from table_name;
+        insert delayed 先缓存到服务器，等表不忙的时候，刷新到磁盘（服务器自己控制）
+        myisam      冷备份 导入 和 导出 文件
+        myisam  行格式  1 固定行（fixed）  2 动态行（dynamic）  3 压缩行 （只读）（compress）
+13         innodb 引擎 ACID特性  atomic consistent isolated durable
+        innodb_file_per_table   设置单独表空间 还是共享表空间，这个参数设置时，对之前的表空间不产生影响
+        innodb_data_file_path         配置表空间的参数，可以设置数据和索引的文件的个数 设置自动扩大 和 最大表空间 在设置这个参数的时候 必须设置另一个参数
+        innodb_data_home_dir = 
+        外键的使用语法  级联操作  删除外键
+        使用外键   1 必须是innodb表
+                2 外键的列必须包含到索引里面（如果不包含，建外键的时候 自动建立索引）
+14        innodb buffers
+        innodb_buffer_pool_size        innodb缓存池的设置
+        innodb_additional_mem_pool_size      数据字典和其他的内部数据（表的描述信息，如果表比较多就设置的大点）
+        innodb_max_dirty_pages_pct         脏数据的百分比达到一定比例就同步到磁盘，取值范围（0--100）整数
+        1 page = 16k        
+        innodb的其他动态变量
+15        memory        表描述文件放入磁盘，数据和索引在内存里面，服务器重启的话，数据就丢失了，表级锁，不支持text和blog的数据
+        支持 哈希索引（默认） 和 B树索引 
+                
+16         用户管理                
+        all 或者 all privileges  最高的权限 但是不能把这权限  给别的用户
+        授权      全局权限（只授予管理用户）--->特定数据库的权限 ------>表级别的权限------>列级别的权限------>函数或执行过程的权限
+        授权表       在mysql的数据库里面   user表 全局的授权表    db表  数据库级别的权限  tables_priv 表级别的权限
+        授权表放在内存里面 ，修改授权表  后 需刷新   flush privileges；
+        数据库的添加用户和密码
+        create user ‘user_name’@‘host_name’identified by ‘password’；
+        删除用户
+        drop user ‘user_name’@‘host_name’；
+        修改用户
+        rename user ‘old_name’@‘host_name’to ‘new_name’@‘host_name’；
+        创建匿名用户（任何人，任何地点可以登录）
+        不可以通过create 创建，通过修改user表创建
+        insert into user （host，user，password）values （‘%’，‘’，‘’）；
+
+        对账户进行授权，同时可以对列进行授权。
+        grant all privileges on *.* to 'root'@'localhost' identified by 'mofang888' with grant option;  最大权限的授权
+        grant （权限）on db_name.table_name  to ‘user_name’@‘host_name’identified by ‘password’；
+        例如   权限 = select create drop delect from  insert   .....
+        *.*  代表所有库的所有表         all privileges   最大的权限
+
+        对账户链接资源的限制
+        每小时的链接数  查询数，更新数   还有并发连接数
+
+        忘记密码的操作（权限表没有载入内存）
+        1 关闭mysql  2 mysqld_safe --skip-grant-tables &  （重启）
+        3 mysql  进入mysql        
+        4 select host，user，password from user；（mysql中的user表）
+        5 update mysql.user set password=password('新密码') where User="test" and Host="localhost";修改密码
+          flush privileges;                                                                          刷新权限
+          Delete FROM mysql.user Where User='test' and Host='localhost';  删除用户
+        
+        select user（）；查看当前的用户
+        SELECT DISTINCT CONCAT('User: ''',user,'''@''',host,''';') AS query FROM mysql.user;   查看此数据库一共有多少用户
+        show grants； 查看权限
+        show processlist；查看已经链接的用户
+        desc table_name；查看表结构
+        如果 host_name  为 %   那么这个不包括 localhost ，可以用本地的ip登录
+        show grants for ‘user_name’@‘host’；        查询某个特定用户的授权
+        GRANT ALL PRIVILEGES ON `hellorf`.* TO 'hellorf'@'192.168.%'          某个库授权某个用户
+        set password for ‘username’@‘host’=password（‘jack’）； 为未设置密码的账户设置密码为 jack
+        revoke （权限）on db_name.table_name  from ‘user_name’@‘host_name’； 撤销某个账户的权限
+        show engines;    查看支持的引擎
+        show variables like '%storage_engine%';  当前默认的存储引擎
+        show create table table_name\G   显示表的引擎
+        
+        
+17        备份恢复
+        mysqldump  --help 
+        非事务表的一致备份
+        mysqldump  --skip-opt --quick --extended-insert=false --flush-logs --lock-all-tables --master-data=2 --databases test1 test2 > /tmp/backup.sql
+        事务表的一致备份
+        mysqldump  --skip-opt --quick --extended-insert=false --single-transaction --master-data=2 --databases test1 test2 > /tmp/backup.sql
+                --master-date={0|1|2}
+                  0: 不记录二进制日志文件以及位置
+                  1：以change master to的 方式记录位置，可用于恢复后直接启动从服务器
+                  2：以change master to的 方式记录位置，但默认被注释
+               --all-databases: 备份所有库
+               --databases DB_NAME : 备份指定库
+                --flush-logs  刷新日志
+                完全备份：mysqldump
+                增量备份：复制二进制日志  首先  flush logs：
+                               方法1：cp mysql-bin.000001 /root/
+                                方法2：mysqlbinlog mysql-bin.000001 > /root/mon-incremental.sql
+                mysqldump备份 数据量特别大的时候，备份的速度会很慢
+               
+                 LVM 备份
+                  snapshot
+                 前提：
+                    1 数据文件要在逻辑卷上
+                    2 此逻辑卷所在卷组必须有足够空间使用快照卷
+                    3 数据文件和事物日志要在同一个逻辑卷上（innodb引擎）
+                  mysql> FLUSH TABLES WITH READ LOCK;
+                  mysql> FLUSH LOGS;
+                  mysql>SHOW MASTER STATUS;
+                  一定要把mysql的日志信息记录下来 **
+                  或者  mysql -e ‘show master status\G’> /backup/master-`date +%F`.info (读锁的窗口不能关闭，锁功能继续)
+
+                  lvcreate -L 50M -s -p r -n mydata-snap /dev/myvg/mydata
+                  mysql> unlock tables;
+                  mount /dev/myvg/mydata /mnt -o ro
+                  cd mnt
+                  cp -a./* /backup
+                  umount /mnt
+                   lvremove --force /dev/myvg/mydata-snap
+                  然后增量备份二进制日志
+
+                 
+                 
+                  
+               
+                 
+
+        
+18         还原  最好还原到实验库，然后倒入生产库
+        备份  --->修改  -----> 删除
+        show binlog events；                查看表删除位置
+        grep MASTER /tmp/test1.sql                查看表备份位置
+        mysql < /tmp/test1.sql                还原数据库
+        mysqlbinlog  --start-position= 112 mysql-bin.000001 | mysql
+                在还原数据库的时候，临时的把二进制日志关掉
+                mysql> SET sql_log_bin=0
+                在当前回话执行
+                 mysql>\. /root/xxx.sql
+                数据恢复之后，然后打开
+                mysql> SET sql_log_bin=1
+
+
+19         选择引擎  需要考虑的问题  1 事物  2 备份 3 奔溃恢复  4 特有的特性 
+
+        myisam 表   可以设置 Delayed Key Write    把写入的内容先存入缓存，可提高写入性能，但是系统奔溃的时候 造成损失。
+                    myisam 设置压缩表之后，数据是不可以改的，如果修改的话 数据可能丢失，但是可以提高IO
+        innodb   最好的情况就用这个引擎的，如果是需要全文索引的话，那就是innodb 和 sphinx  结合            
+                
+20         不同引擎间表的转换，需要的话 可以加锁
+        1  正对数据量不是太大的情况
+         mysql> CREATE TABLE innodb_table LIKE myisam_table;
+         mysql> ALTER TABLE innodb_table ENGINE=InnoDB;
+         mysql> INSERT INTO innodb_table SELECT * FROM myisam_table;        
+        2  数据量大的情况
+          mysql> START TRANSACTION;
+          mysql> INSERT INTO innodb_table SELECT * FROM myisam_table
+          -> WHERE id BETWEEN x AND y;
+          mysql> COMMIT;
+21        基准测试的指标  吞吐量  响应时间或延迟   并发性   可扩展性
+        集成测试工具  简单---->复杂   ab----->http_load----->  JMEter
+        mysql 的测试工具（mysql 中文第三版 87页）    主要 sysbench，不仅可以测试mysql（OLTP) ，同时还可以测试服务器 TPCC-                mysql  可以模拟真实的环境
+        绘图工具 用  gnuplot
+
+22         percona toolkit 的使用      New Relic (software-as-a-service)     xhprof  lfp     tcpdump    性能剖析的工具
+        可以每秒统计 status的情况  还有 processlist 的情况
+
+23         char 适合比较短的列，列长比较平均，更新频率比较高的列
+        varchar 适合 列长短不一致，跟新频率比较低的列 ，其会用1,2个字节 记录列的长度，mysql使用固定大小内存保存内部值。
+
+24      聚簇索引 把索引和数据储存在同一节点，提高IO（主要是磁盘），查找快速，内存中不起作用，更新，插入代价大，全表扫描慢
+
+25      mysql多实例的配置 线上有mysql多实例的配置，进入mysql的时候需要指定 -S /xx/xx/xx.sock 
+
+
+mysql备份脚本
+#!/bin/bash
+#备份mysql
+path='/data/sql_backup'
+cd $path
+date=`date +%F`
+find $path -name "*.gz" -mtime +5 -exec rm -rf {} \;
+/opt/mysql/bin/mysqldump -uroot -pmofang888 -h127.0.0.1 --all-databases --master-data=2 | gzip > $path/mysql_backup_$date.sql.gz
+
+xtrabackup的备份脚本
+#!/bin/bash
+BEGINTIME=`date +"%Y-%m-%d %H:%M:%S"`
+format_time=`date +"%Y-%m-%d_%H:%M:%S"`
+week=`date +%w`
+port=3306
+olddate=`date +%F`
+backdir=/data/backup/xtrabackup
+file_cnf=/etc/mysql/my.cnf
+user_name=root
+password=abc.123
+out_log=$backdir/Xtrabackup_log_$format_time
+time_cost=$backdir/Xtrabackup_time.txt
+[ ! -d $backdir ] && mkdir -pv $backdir
+if [ -d "$backdir/rec5" ];then
+        mv $backdir $backdir-$olddate
+        mkdir $backdir
+fi
+#full
+if [ ! -d "$backdir/full" ];then
+        echo "#####start full backup at $BEGINTIME to directory full" >>$time_cost
+         innobackupex --no-lock --defaults-file=$file_cnf --no-timestamp --user=$user_name --password=$password     --port=$port  $backdir/full 1> $out_log 2>&1
+         break;
+elif [ ! -d "$backdir/rec0" ];then
+        echo "#####start 0 incremental backup at $BEGINTIME to directory rec1" >>$time_cost
+        innobackupex --no-lock --defaults-file=$file_cnf  --no-timestamp --user=$user_name --password=$password    --port=$port --incremental --incremental-basedir=$backdir/full $backdir/rec0 1> $out_log 2>&1
+        break;
+elif [ ! -d "$backdir/rec1" ];then
+        echo "#####start 1 incremental backup at $BEGINTIME to directory rec1" >>$time_cost
+        innobackupex --no-lock --defaults-file=$file_cnf  --no-timestamp --user=$user_name --password=$password    --port=$port --incremental --incremental-basedir=$backdir/rec0 $backdir/rec1 1> $out_log 2>&1
+         break;
+elif [ ! -d "$backdir/rec2" ];then
+        echo "#####start 2 incremental backup at $BEGINTIME to directory rec1" >>$time_cost
+        innobackupex --no-lock --defaults-file=$file_cnf  --no-timestamp --user=$user_name --password=$password    --port=$port --incremental --incremental-basedir=$backdir/rec1 $backdir/rec2 1> $out_log 2>&1
+         break;
+elif [ ! -d "$backdir/rec3" ];then
+        echo "#####start 3 incremental backup at $BEGINTIME to directory rec1" >>$time_cost
+        innobackupex --no-lock --defaults-file=$file_cnf  --no-timestamp --user=$user_name --password=$password    --port=$port --incremental --incremental-basedir=$backdir/rec2 $backdir/rec3 1> $out_log 2>&1
+         break;
+elif [ ! -d "$backdir/rec4" ];then
+        echo "#####start 4 incremental backup at $BEGINTIME to directory rec1" >>$time_cost
+        innobackupex --no-lock --defaults-file=$file_cnf  --no-timestamp --user=$user_name --password=$password    --port=$port --incremental --incremental-basedir=$backdir/rec3 $backdir/rec4 1> $out_log 2>&1
+         break;
+elif [ ! -d "$backdir/rec5" ];then
+        echo "#####start 5 incremental backup at $BEGINTIME to directory rec1" >>$time_cost
+        innobackupex --no-lock --defaults-file=$file_cnf  --no-timestamp --user=$user_name --password=$password    --port=$port --incremental --incremental-basedir=$backdir/rec4 $backdir/rec5 1> $out_log 2>&1
+         break;
+ fi
+ ENDTIME=`date +"%Y-%m-%d %H:%M:%S"`
+ begin_data=`date -d  "$BEGINTIME" +%s`
+ end_data=`date -d  "$ENDTIME" +%s`
+spendtime=`expr $end_data - $begin_data`
+ echo "it takes $spendtime sec for packing the data directory" >>$time_cost
+ tail $time_cost
+
+
+MYSQL主从的配置（如果需要主从切换，都得设置binlog）
+yum 安装MySQL  
+yum install mysql mysql-server mysql-devel
+
+主的配置：
+[mysqld]
+default-character-set=utf8
+log-bin=mysql-bin
+server-id=1
+innodb_flush_log_at_trx_commit=1
+sync_binlog=1
+binlog-do-db=wordpress               
+binlog_ignore_db=mysql    
+从的配置
+default-character-set=utf8
+server-id=2
+log-bin=mysql-bin 
+
+主从开启数据库
+从的添加用户：
+CREATE USER 'backup'@ '从ip' IDENTIFIED BY 'password';
+主的添加用户
+CREATE USER 'backup'@ '主ip' IDENTIFIED BY 'password'; 
+主的给从的授权
+GRANT REPLICATION SLAVE ON *.* TO 'backup'@'从ip' IDENTIFIED BY 'password';
+
+flush tables with read lock;
+unlock tables; 
+
+从改主的过程：
+先登录主MySQL，show master status；   查看  binlog数  和 position数（记住）
+然后在从的上面操作：
+CHANGE MASTER TO MASTER_HOST='X.X.X.X' , MASTER_USER='user',MASTER_PASSWORD='password',MASTER_PORT=3306,MASTER_LOG_FILE='mysqlbin.000001',MASTER_LOG_POS=98,MASTER_CONNECT_RETRY=10;
+然后 start slave； show slave status； 查看从同步的情况。
+
+主从切换
+从库：
+    stop slave io_thread;
+  show processlist \G
+  show slave status \G
+    出现以下显示：
+   Make sure that the slave have processed any statements in their relay log.
+  show processlist \G中显示 State: Slave has read all relay log;
+  stop slave;
+    reset master;
+  reset slave;
+    show master status \G      
+    记录binlog的位置，和position数
+ 从库：
+  set global read_only=0;
+   CHANGE MASTER TO MASTER_HOST='X.X.X.X' , MASTER_USER='user',MASTER_PASSWORD='password',MASTER_PORT=3306,MASTER_LOG_FILE='mysqlbin.000001',MASTER_LOG_POS=98,MASTER_CONNECT_RETRY=10;
+   start slave;
+  show slave status \G
+        
+  主机直接宕机：
+     在备机上执行STOP SLAVE 和RESET MASTER                                                                                                                                                                                                                                                                                                    
+     查看show slave status \G; show processlist；
+     然后修改应用的连接地址
+        
+
+发现slave的复制有问题，可以尝试以下的修复方法
+stop slave；
+CHANGE MASTER TO MASTER_LOG_FILE='mysql-bin.000011',MASTER_LOG_POS=339238270;
+start slave；
+
+
+        
+
+
+        
+        
+        
+
+
+

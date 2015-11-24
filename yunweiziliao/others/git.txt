@@ -1,0 +1,152 @@
+安装
+     在Linux上安装Git
+     查看是否安装 
+     # git
+     # yum -y install git
+
+建库
+   # mkdir /home/git_repo     
+   初始化库
+   # cd /home/git_repo
+   # git init
+     Initialized empty Git repository in /Users/michael/learngit/.git/
+   在此目录下看到.git的隐藏目录，说明初始化成功
+库内相关的文件的操作：
+   # vim readme.txt  （此文件一定要放在/home/git_repo 或他的子目录下）
+   # git add readme.txt （把文件提交到暂存库里面）
+   # git commit -m "xxxxx"  (把文件填到永久库) -m 对添加文件的描述
+   # git status  查看仓库当前的状态
+   # git diff    查看仓库文件变动的地方  ，如果有变动需要提交的话，则执行  git add xxxx  ： git commit -m ‘comment’
+版本的回退：
+   # git log    查看关于git的历史记录  
+     commit 3628164fb26d48395383f8f31179f24e0882e1e0
+     Author: Michael Liao <askxuefeng@gmail.com>
+     Date:   Tue Aug 20 15:11:49 2013 +0800
+
+         append GPL
+
+    commit ea34578d5496d7dd233c827ed32a8cd576c5ee85
+    Author: Michael Liao <askxuefeng@gmail.com>
+    Date:   Tue Aug 20 14:53:12 2013 +0800 
+
+      add distributed  
+
+   # git log --pretty=oneline  显示git历史记录的简要内容
+     3628164fb26d48395383f8f31179f24e0882e1e0 append GPL    3628164fb26d48395383f8f31179f24e0882e1e0  为 commit id
+     ea34578d5496d7dd233c827ed32a8cd576c5ee85 add distributed
+    
+    # git reset --hard HEAD^  回退到上一个版本
+    # git reset --hard HEAD^^ 回退到上上个版本 
+    # git reset --hard HEAD~100  回退到前第100个版本 
+    # git log  回退之后可以查看相关的日志    git log -1  查看最新的一个日志
+    # git reset --hard commit id  可以重新回到最新版本，或者某一版本 （根据commit id）
+    # git reflog 查看历史命令 ，可以查看到所有的commit id 
+    # git diff HEAD -- xxxx.xx  查看工作区和版本库里面最新版本的区别  
+    # git checkout -- xxxx
+        一种是xxxx自修改后还没有被放到暂存区，现在，撤销修改就回到和版本库一模一样的状态；
+        一种是xxxx已经添加到暂存区后，又作了修改，现在，撤销修改就回到添加到暂存区后的状态。
+        总之，就是让这个文件回到最近一次git commit或git add时的状态
+    # git reset HEAD xxxx  可以把暂存区的修改撤销掉（unstage），重新放回工作区    HEAD 表示最新的版本
+       然后 # git checkout -- xxxx 彻底回退
+删除文件：
+    # rm xxx
+    # git status
+    # git rm xx
+    # git commit -m ‘remove xxxx’
+      文件从版本库中删除
+
+      另一种情况是删错了，因为版本库里还有呢，所以可以很轻松地把误删的文件恢复到最新版本
+       # git checkout -- xxxx
+       git checkout其实是用版本库里的版本替换工作区的版本，无论工作区是修改还是删除，都可以“一键还原”
+       命令git rm用于删除一个文件。如果一个文件已经被提交到版本库，那么你永远不用担心误删，但是要小心，你只能恢复文件到最新版本，你会丢失最近一次提交后你修改的内容。
+创建和合并分支：
+    # git branch dev         创建分支
+    # git checkout dev       切换到分支
+         以上2步骤可以用 git checkout -b dev  一条命令完成
+    # git branch 查看当前分支  会列出所有分支，* 表示当前分支
+    # git checkout master   
+      git checkout dev      主和分支之间切换
+    # git merge dev       合并分支到master分支，此时删除分支不影响master，用的是 Fast forward 模式
+    # git branch -d dev   把分支删除
+    # git branch  查看 分支已经被删除
+      当 branch修改一个文件，然后 add commit ，切换到 master后，master修改同一个文件，然后 add commit ，如果这时候master合并branch的时候，就是显示错误，通过git status 查看也可以看到错误 ，这时候需要手动修改文件，然后 add commit
+      git log --graph --pretty=oneline --abbrev-commit 此命令可以查看合并的情况，然后删除branch
+      git log --graph命令可以看到分支合并图
+分支管理策略  --no-ff 不使用Fast forward 模式
+    步骤
+     # git checkout -b dev  新建分支
+     # git add readme.txt  readme.txt是修改过的
+     # git commit -m "add merge" 
+     # git checkout master 切换到主
+     # git merge --no-ff -m "merge with no-ff" dev   合并  --no-ff 表示禁用Fast forward
+     # git log --graph --pretty=oneline --abbrev-commit  查看分支历史
+     在实际开发中，我们应该按照几个基本原则进行分支管理：
+       首先，master分支应该是非常稳定的，也就是仅用来发布新版本，平时不能在上面干活；
+       那在哪干活呢？干活都在dev分支上，也就是说，dev分支是不稳定的，到某个时候，比如1.0版本发布时，再把dev分支合并到master上，在master分支发布1.0版本；
+       你和你的小伙伴们每个人都在dev分支上干活，每个人都有自己的分支，时不时地往dev分支上合并就可以了。 
+       合并分支时，加上--no-ff参数就可以用普通模式合并，合并后的历史有分支，能看出来曾经做过合并，而fast 
+       forward合并就看不出来曾经做过合并
+     
+    正在写程序的时候，暂时还不能提交，遇到之前的bug需要处理，做如下操作：
+     1 在自己写程序的分支里面   git stash
+        然后执行  git status ，可以看到工作区是干净的 
+     2 切换到master 建立修复bug的分支  
+        # git checkout master
+        # git checkout -b issue-101  进入bug分支
+        # git add xxx
+        # git commit -m ‘command’
+     3 切换master，然后合并到master#
+        # git checkout master
+        # git merge --no-ff -m "merged bug fix 101" issue-101
+     4 修复bug的事情完成之后
+        返回自己的工作分支
+        # git status
+        # git stash list  查看隐常的工作
+        恢复的两种方法：
+         1 git stash apply  恢复   git stash drop 删除stash
+         2 git stash pop  恢复并删除stash
+        # git stash list 在删除之后 查看stash
+        # git stash apply stash@{0}  恢复指定的stash
+      5 强行删除没有被合并过的分支
+         git branch -D <name>  
+多人合作，远程推送
+         首先，可以试图用git push origin branch-name推送自己的修改；
+         如果推送失败，则因为远程分支比你的本地更新，需要先用git pull试图合并；
+         如果合并有冲突，则解决冲突，并在本地提交；
+         没有冲突或者解决掉冲突后，再用git push origin branch-name推送就能成功！
+         如果git pull提示“no tracking information”，则说明本地分支和远程分支的链接关系没有创建，
+          用命令git branch --set-upstream branch-name origin/branch-name。
+         
+         查看远程库信息，使用git remote -v；
+         本地新建的分支如果不推送到远程，对其他人就是不可见的；
+         从本地推送分支，使用git push origin branch-name，如果推送失败，先用git pull抓取远程的新提交；
+         在本地创建和远程分支对应的分支，使用git checkout -b branch-name origin/branch-name，本地和远程分支的名称最好一致；
+         建立本地分支和远程分支的关联，使用git branch --set-upstream branch-name origin/branch-name；
+         从远程抓取分支，使用git pull，如果有冲突，要先处理冲突
+
+标签管理：发布一个版本时，我们通常先在版本库中打一个标签，这样，就唯一确定了打标签时刻的版本。将来无论什么时候，取某个标签的版本，就是把          那个打标签的时刻的历史版本取出来。所以，标签也是版本库的一个快照。
+          Git的标签虽然是版本库的快照，但其实它就是指向某个commit的指针（跟分支很像对不对？但是分支可以移动，标签不能移动），所以，创建和删除标签都是瞬间完成的。
+          1 想在哪个分支打印标签 ，需先切到哪个标签
+            # git tag <name>  打一个新标签  默认是 HEAD
+            # git tag 查看所有标签
+
+            #  git log --pretty=oneline --abbrev-commit
+            #  git tag tag_name commit_id                给之前commit的任务打标签
+            #  git show  <tagname>                      查看标签信息
+            #   git tag -a tag_name -m "command" commit_id  创建带有说明的标签，用-a指定标签名，-m指定说明文字
+            #  git tag -s tag_name -m "command" commit_id   通过- s用私钥签名一个标签，签名采用PGP签名，
+                                                            因此，必须首先安装gpg（GnuPG），如果没有找到gpg，或者没有gpg密钥对，就会报错
+    操作标签：
+            # git tag -d tag_name  删除标签
+            # git push origin <tag_name>  推送tag 从本地到远程
+            # git push origin --tags  一次性推送全部尚未推送到远程的本地标签
+
+            # git tag -d tag_name
+            # git push origin :refs/tags/tag_name   此两步，删除已经推送到远程的tag
+    配置别名：
+            # git config --global alias.st status  把status 配置成了st   如  git status  直接输 git st就ok了
+            # git config --global alias.lg "log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit"    在自己的git仓库 可以设置
+              --global参数是全局参数，也就是这些命令在这台电脑的所有Git仓库下都有用，如果不加，那只针对当前的仓库起作用
+            .git/config   git的配置文件  要是想删除别名的话  在git的配置文件直接注释就可以了
+ 搭建git仓库：
+            ：看博客了 （步骤太多 ）

@@ -1,0 +1,59 @@
+1 resin.properties的配置以及配置的意义
+2 resin.properties
+如果resin开启多个服务的话 
+在原来resin配置的基础上添加如下内容
+
+web_servers : 127.0.0.1:6810
+web.http    : 80
+proxy_cache_enable : true
+proxy_cache_size   : 256m
+
+开启多个服务的命令    resinctl start-all
+
+3 （没有成功 403，找原因）admin_password 和 admin_user  用于登录resin-admin，REST，远程执行resinctl CLI  ，可以显示服务的状态，报告统计的信息，部署应用
+resin-admin   生成password的命令      resinctl generate-password my-admin my-password
+需要开启一下几项：
+admin_user     : my-admin
+admin_password : {SSHA}G3UOLv0dkJHTZxAwmhrIC2CRBZ4VJgTB
+web_admin_enable   : true
+web_admin_ssl      : true
+rest_admin_enable  : true
+rest_admin_ssl     : true
+ssl 用于 https ，有认证的话最好开启
+resin-admin can show the server status, report statistics graphs, deploy applications, and generate PDF reports
+
+
+port_thread_max   : 256     单个端口最多接受256个线程，如果超过这个线程的话，就排队等候
+accept_thread_max : 32
+accept_thread_min ：4       至少有四个线程在等待连接
+connection-max                  服务允许的最大的连接数
+throttle-concurrent-max     限制单个IP的最大并发数量
+socket-timeout                     超时，由于浏览器的需要最少65s
+keepalive-timeout               一段时间接受不到请求，关闭端口，even a small value like 10s can improve performance
+keepalive-select-thread-timeout   You can increase the performance with a slight increased thread count by increasing keepalive-select-thread-timeout
+
+sendfile                                大量传输静态文件的时候 特别的有用，内核空间直接发送，不经过用户空间
+session_store                       集群故障转移的应用
+tcp_cork                              提高大文件传输的性能，预缓存要发送的数据，直到缓存满为止，而非部分缓存
+
+web_admin_external         用于外网访问resin_admin ,同时用web_admin_ssl选项，安全起见
+
+
+resin.xml
+1 resin.xml 管理所有的resin的配置文件，resin..xml 通过导入resin.properties，和一些xml结尾的文件的内容而管理这些文件，很多的站点不需要修改resin.xml的文件，而只需要修改resin.properties就够了。
+cluster  --  统一配置的文件的结合
+environment --   与共享的资源隔离开的文件，主要的环境包括server host web-app
+host -- http 虚拟host
+proxy cache -- http proxy cache
+resourse -- 可用于请求的驱动或者服务，resin特定的资源包括security，authenticators, health-checks and the rewrite/dispatch system
+rewrite/dispatch  -- 分配 HTTP URLs
+server -- resin 的JVM实例   一个机器可以有多个实例的 
+watchdog -- 监控resin server 必要的时候重启server
+web-app --  web应用程序，此运行servlets
+
+
+
+
+
+
+

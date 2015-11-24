@@ -1,0 +1,20 @@
+vn 出现问题  
+先关闭svn。然后恢复
+svnadmin  recover /opt/svn/zcool
+
+svnadmin hotcopy方法  不支持增量备份
+
+1. 备份
+#svnadmin hotcopy /opt/svn/iitshare/ /var/tmp/iitshare_20130626 –clean-logs
+如果你传递–clean-logs选项，svnadmin会执行热拷贝操作，然后删除不用的Berkeley DB日志文件。
+你可以在任何时候运行这个命令得到一个版本库的安全拷贝，不管其它进程是否使用这个版本库。
+2. 还原
+#svnadmin hotcopy /var/tmp/iitshare_20130626 /opt/svn/iitshare/
+
+svnadmin dump  速度慢   但支持增量备份
+
+
+svn  服务端 变换机器之后的   客户端的 链接客户端的变化
+svn sw --relocate svn://106.3.40.229/zcool/source/static（原来的svn） svn://106.3.40.229/zcool/static/static-online（修改后的svn）
+如果是只是svn服务的目录变化    
+ svn switch svn://106.3.40.229/zcool/static/static-online （最终的目录）

@@ -1,0 +1,59 @@
+innobackupex   支持mysql和innodb    innobackup 只支持 innodb
+备份脚本
+#!/bin/bash
+innobackupex-1.5.1 --user=root --password=Shiguanghai --defaults-file=/server/scripts/dbback/my.cnf.tmp  --throttle=500 --slave-info /server/script/dbback/full_mysql-1 >/server/script/dbback/full_mysql-1/xtrabackup.log 2>&1
+if [ $? -eq 0 ]
+then
+backdir=`ls -d /server/script/dbback/full_mysql-1/$(date +%F)_*`
+innobackupex-1.5.1 --defaults-file=my.cnf.tmp  --apply-log $backdir
+sleep 2
+find /server/script/dbback/full_mysql-1 -mtime +30|xargs rm -rf
+else
+   echo "apply-log failed">>/tmp/backup_error.log
+fi
+
+
+
+innobackupex 的备份步骤   innobackupex2.0  支持mysql5.1.73     rpm包安装
+1  数据 库添加备份的用户
+create user'bkpuser'@'localhost'identified by'123';
+grant reload,lock tables,replication client on *.*to'bkpuser'@'localhost';
+flush privileges;
+2 全备
+mkdir -p /data/mysql_backup/
+innobackupex --user=root --socket=/tmp/mysql.sock --defaults-file=/etc/my.cnf /data/mysql_backup/
+3增量备份 （增量备份的目录需要自己创建）
+mkdir -p  /data/mysql_backup/one
+innobackupex --user=root  --socket=/tmp/mysql.sock --defaults-file=/etc/my.cnf --incremental /data/mysql_backup/one --incremental-basedir=/data/mysql_backup/2015-09-24_16-16-37
+mkdir -p /data/mysql_backup/two
+innobackupex --user=root  --socket=/tmp/mysql.sock --defaults-file=/etc/my.cnf --incremental /data/mysql_backup/two --incremental-basedir=/data/mysql_backup/one/2015-09-24_16-47-26/
+mkdir -p /data/mysql_backup/three
+innobackupex --user=root  --socket=/tmp/mysql.sock --defaults-file=/etc/my.cnf --incremental /data/mysql_backup/three --incremental-basedir=/data/mysql_backup/two/2015-09-24_16-57-02/
+
+3 恢复数据
+全备数据的恢复  需要把数据库的 datadir 目录的数据全部删除   恢复数据的时候 mysql最好关掉，恢复之后有问题的话，修改data目录的权限
+innobackupex --apply-log --redo-only --use-memory=2G /data/mysql_backup/2015-09-24_16-16-37/
+innobackupex --apply-log --redo-only --use-memory=2G /data/mysql_backup/2015-09-24_16-16-37/ --incremental-dir=/data/mysql_backup/one/2015-09-24_16-47-26/
+innobackupex --apply-log --redo-only --use-memory=2G /data/mysql_backup/2015-09-24_16-16-37/ --incremental-dir=/data/mysql_backup/two/2015-09-24_16-57-02/
+
+恢复的时候 增量按备份的顺序来
+innobackupex --copy-back --defaults-file=/etc/my.cnf /data/mysql_backup/2015-09-24_16-16-37/
+
+
+
+检查主从一致性
+1 yum install perl perl-DBI perl-DBD-MySQL perl-IO-Socket-SSL perl-Time-HiRes -y
+
+
+   percona-toolkit-2.2.8-1.noarch.rpm
+
+
+2 执行pt-table-checksum命令的帐号,至少需要有全库的只读权限和percona库的读写权限
+create user xx;
+GRANT SELECT, PROCESS, SUPER, REPLICATION SLAVE ON *.* TO 'xx'@'%' IDENTIFIED BY 'xx';
+grant all privileges on percona.* TO 'xx'@'%' IDENTIFIED BY 'xx';
+
+
+3 pt-table-checksum --user=pt --password=pt --host=192.168.1.227 --no-check-binlog-format
+--host  代表主库的IP
+

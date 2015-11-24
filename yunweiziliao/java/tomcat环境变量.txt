@@ -1,0 +1,20 @@
+先安装JDK，然后安装tomcat，发现tomcat起不来
+报错如下：
+/opt/apache-tomcat-7.0.63/bin/catalina.sh: line 387: /opt/jdk/jre　/bin/java: No such file or directory
+然后配置环境变量：
+export JAVA_HOME="$PATH:/opt/jdk1.6.0_45"
+export JRE_HOME="/opt/jdk1.6.0_45/jre"
+export PATH="$JAVA_HOME/bin:$PATH"
+export CLASSPATH=".:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar"
+
+export JRE_HOME="/opt/jdk1.6.0_45/jre" 多添加了这一句，然后就开启了tomcat了  
+
+
+tomcat可以查看状态，并可以是定指定的人 擦看状态
+
+tomcat安装好的环境变量的设置：
+vim /etc/profile.d/tomcat.sh
+export CATALINA_HOME=/usr/local/tomcat
+export PATH=$PATH:$CATALINA_HOME/bin
+执行   .  /etc/profile.d/tomcat.sh
+

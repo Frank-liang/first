@@ -1,0 +1,54 @@
+1 查看nginx的编译参数
+/usr/local/nginx/sbin/nginx -V
+
+2 nginx的切割日志
+#!/bin/bash
+#nginx log cut
+log_path="/var/log/nginx"
+pid="/var/run/nginx.pid"
+date=`date +%Y%m%d`
+mv $log_path/access.log $log_path/access.$date.log
+kill -HUP `cat $pid`
+gzip $log_path/access.$date.log
+
+3 查看nginx的连接 以及针对time_wait 的调优
+netstat -n | awk '/^tcp/ {++state[$NF]} END {for(key in state) print key,"\t",state[key]}'
+查看nginx的连接状态
+如果time_wait 的数量比较多的话 
+vim /etc/sysctl.conf
+net.ipv4.tcp_tw_reuse = 1
+net.ipv4.tcp_tw_recycle = 1
+/sbin/sysctl -p  使参数生效
+
+ netstat -nat | grep "192.168.74.132" |awk '{print $5}'|awk -F: '{print $1}'|sort|uniq -c|sort -nr|head -20
+连接到本机的IP的排序
+
+4 nginx status
+1）nginx的配置文件添加如下内容
+server {
+    listen  *:80 default_server;
+    server_name _;
+    location /ngx_status 
+    {
+        stub_status on;
+        access_log off;
+        #allow 127.0.0.1;
+        #deny all;
+    }
+}
+2）重启nginx
+3）打开页面
+# curl http://127.0.0.1/ngx_status
+Active connections: 11921 
+server accepts handled requests
+ 11989 11989 11991 
+Reading: 0 Writing: 7 Waiting: 42
+4）nginx详解
+active connections – 活跃的连接数量
+server accepts handled requests — 总共处理了11989个连接 , 成功创建11989次握手, 总共处理了11991个请求
+reading — 读取客户端的连接数.
+writing — 响应数据到客户端的数量
+waiting — 开启 keep-alive 的情况下,这个值等于 active – (reading+writing), 意思就是 Nginx 已经处理完正在等候下一次请求指令的驻留连接.
+
+
+

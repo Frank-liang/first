@@ -1,0 +1,865 @@
+需要下载的源码包 以及 相关的包的作用
+nginx-1.2.2.tar.gz
+mysql-5.5.25a.tar.gz
+php-5.4.4.tar.gz
+其它相关软件包和依赖包：
+cmake-2.8.8.tar.gz   #MySQL编译工具
+eaccelerator-0.9.6.1.zip  #php加速器，使PHP程序代码执效率能提高1-10倍；
+xcache-2.0.1.tar.gz #php加速器，用来替代eaccelerator
+google-perftools-1.9.1.tar.gz 
+ImageMagick-6.7.8-2.tar.gz  #功能强大、稳定而且免费的工具集和开发包；
+imagick-3.1.0RC2.tgz  #PHP的一个扩展程序，它是默认的GD图象函数库的绝佳替代方案。
+libiconv-1.14.tar.gz
+libmcrypt-2.5.8.tar.gz
+mcrypt-2.6.8.tar.gz
+memcache-3.0.6.tgz
+memcached-1.4.13.tar.gz  #高性能的分布式的内存对象缓存系统；可替换 memcache-3.0.6.tgz
+mhash-0.9.9.9.tar.bz2
+ncurses-5.9.tar.gz
+openssl-1.0.1c.tar.gz
+pcre-8.31.tar.gz
+php-fpm-0.6-103~5.3.1.tar.gz
+wordpress-3.4.1-zh_CN.zip   #wordpress个人博客
+所有的软件包都放在 /data1/lnmp/ 这个目录下面。
+注意：
+eAccelerator 是一个自由开放源码php加速器，优化和动态内容缓存，提高了php脚本的缓存性能，使得PHP脚本在编译的状态下，对服务器的开销几乎完全消除。 它还有对脚本起优化作用，以加快其执行效率。使PHP程序代码执效率能提高1-10倍。
+Memcache 是一个高性能的分布式的内存对象缓存系统，通过在内存里维护一个统一的巨大的hash表，它能够用来存储各种格式的数据，包括图像、视频、文件以及数据库检索的结果等。它可以应对任意多个连接，使用非阻塞的网络IO。由于它的工作机制是在内存中开辟一块空间，然后建立一个HashTable，Memcached自管理这些HashTable。php中的所讲的memcache是PHP的一个扩展，是一个客户端，用于连接 memcached。
+ImageMagick 是一套功能强大、稳定而且免费的工具集和开发包，可以用来读写和处理超过89种基本格式的图片文件。利用ImageMagick，你可以根据web应用程序的需要动态生成图片, 还可以对一个（或一组）图片进行改变大小、旋转、锐化、减色或增加特效等操作，并将操作的结果以相同格式或其它格式保存。
+
+
+基础包的安装
+yum install make apr* autoconf automake curl-devel gcc gcc-c++ zlib-devel openssl openssl-devel pcre-devel gd  kernel keyutils  patch  perl kernel-headers compat* mpfr cpp glibc libgomp libstdc++-devel ppl cloog-ppl keyutils-libs-devel libcom_err-devel libsepol-devel libselinux-devel krb5-devel zlib-devel libXpm* freetype libjpeg* libpng* php-common php-gd ncurses* libtool* libxml2 libxml2-devel patch mysql-devel
+
+这个shell的目的检查下包是否安装完成
+for i in ` rpm -q gcc gcc-c++ autoconf libjpeg libjpeg-devel libpng libpng-devel freetype freetype-devel libxml2 libxml2-devel zlib zlib-devel glibc glibc-devel glib2 glib2-devel bzip2 bzip2-devel ncurses ncurses-devel curl curl-devel e2fsprogs e2fsprogs-devel krb5 krb5-devel libidn libidn-devel openssl openssl-devel openldap openldap-devel nss-ldap openldap-clients openldap-servers bison bison-devel readline readline-devel libmcrypt libmcrypt-devel net-snmp-devel libXpm* libxml2 libxml2-devel patch|grep 'not installed' | awk '{print $2}' `; 
+do
+yum -y install $i;
+done
+
+nginx的安装
+pcre支持rewrite重写
+tar -xzf pcre-8.31.tar.gz
+cd pcre-8.31
+./configure
+make && make install
+
+tar -xzf openssl-1.0.1g.tar.gz
+cd openssl-1.0.1g
+./config --prefix=/usr/local/openssl
+make && make install
+查看openssl的版本的命令    openssl version -a
+新的ssl库在/usr/local/ssl/。也可以指定路径，如：#config --prefix=/usr/local/openssl/；凡是安装其它软件包时涉及到ssl的，需要指定openssl的安装路径/usr/local/openssl/。
+
+groupadd nginx
+useradd -M -g nginx -s /sbin/nologin nginx
+mkdir /var/log/nginx
+mkdir -p /tmp/nginx/client
+mkdir /tmp/nginx/proxy
+mkdir /tmp/nginx/fastcgi
+
+
+tar -xzf nginx-1.2.2.tar.gz
+cd nginx-1.2.2
+./configure --prefix=/usr/local/nginx --user=nginx --group=nginx --with-http_stub_status_module --with-http_ssl_module --with-md5=/usr/lib --with-http_flv_module --with-http_gzip_static_module --pid-path=/var/run/nginx.pid --lock-path=/var/lock/nginx.lock --error-log-path=/var/log/nginx/error.log --http-log-path=/var/log/nginx/access.log --http-client-body-temp-path=/var/tmp/nginx/client --http-proxy-temp-path=/var/tmp/nginx/proxy --http-fastcgi-temp-path=/var/tmp/nginx/fastcgi --with-pcre=/usr/local/lnmp/pcre-8.31 --with-openssl=/usr/local/lnmp/openssl-1.0.1g
+make
+make install
+
+nginx安装完成后 在/usr/local/nginx 的目录下面后生成三个文件 conf  html sbin 把nginx打开的时候，又生成两个文件 scgi_temp    uwsgi_temp
+/usr/local/nginx/sbin/nginx  执行打开nginx的时候 需要 建立一个文件  mkdir /var/tmp/nginx/
+ln -s /usr/local/nginx/sbin/nginx /usr/local/sbin/nginx      打开nginx不需要绝对路劲了 
+可以打开nginx了  （打开之前 需要把selinux  和 iptables 关掉）
+
+建立 nginx 管理脚本
+1、在 /etc/init.d/ 目录下创建 nginxd 文件 内容如下：
+[root@test ~]# vim /etc/init.d/nginxd
+#!/bin/bash
+# nginx Startup script for the Nginx HTTP Server
+# it is v.1.3.0 version.
+# chkconfig: - 85 15
+# description: Nginx is a high-performance web and proxy server.
+#              It has a lot of features, but it's not for everyone.
+# processname: nginx
+# pidfile: /var/run/nginx.pid
+# config: /usr/local/nginx/conf/nginx.conf
+nginxd=/usr/local/nginx/sbin/nginx
+nginx_config=/usr/local/nginx/conf/nginx.conf
+nginx_pid=/var/run/nginx.pid
+RETVAL=0
+prog="nginx"
+# Source function library.
+.  /etc/rc.d/init.d/functions
+# Source networking configuration.
+.  /etc/sysconfig/network
+# Check that networking is up.
+[ ${NETWORKING} = "no" ] && exit 0
+[ -x $nginxd ] || exit 0
+# Start nginx daemons functions.
+start() {
+if [ -e $nginx_pid ];then
+   echo "nginx already running...."
+   exit 1
+fi
+   echo -n $"Starting $prog: "
+   daemon $nginxd -c ${nginx_config}
+   RETVAL=$?
+   echo
+   [ $RETVAL = 0 ] && touch /var/lock/subsys/nginx
+   return $RETVAL
+}
+# Stop nginx daemons functions.
+stop() {
+        echo -n $"Stopping $prog: "
+        killproc $nginxd
+        RETVAL=$?
+        echo
+        [ $RETVAL = 0 ] && rm -f /var/lock/subsys/nginx /usr/local/nginx/logs/nginx.pid
+}
+reload() {
+    echo -n $"Reloading $prog: "
+    #kill -HUP `cat ${nginx_pid}`
+    killproc $nginxd -HUP
+    RETVAL=$?
+    echo
+}
+# See how we were called.
+case "$1" in
+start)
+        start
+        ;;
+stop)
+        stop
+        ;;
+reload)
+        reload
+        ;;
+restart)
+        stop
+        start
+        ;;
+status)
+        status $prog
+        RETVAL=$?
+        ;;
+*)
+        echo $"Usage: $prog {start|stop|restart|reload|status|help}"
+        exit 1
+esac
+exit $RETVAL
+2、设置开机自动启动 nginxd
+[root@test ~]# chmod 755 /etc/rc.d/init.d/nginxd
+[root@test ~]# chkconfig --add nginxd
+[root@test ~]# chkconfig --level 35 nginxd on
+[root@test ~]# service nginxd restart
+五、 nginx 相关命令
+1、nginx 命令
+#nginx -h #帮助
+#nginx -v #显示版本
+#nginx -V #显示版本和配置信息
+#nginx -t #测试配置
+#nginx -q #测试配置时，只输出错误信息
+#nginx -s stop #停止服务器
+#nginx -s reload #重新加载配置
+#nginx -s quit #从容停止nginx
+#nginx -s reopen #不知道，估计和reload类似
+#nginx -p prefix_path #默认为/usr/local/nginx（nginx安装路径）
+#nginx -c conf_file_path #配置文件路径，默认为conf/nginx.conf，有多个配置文件时很有用，用这个可以启动多个不同的nginx监听不同端口
+2、停止 nginx
+停止nginx的方法有很多，一般通过发送系统信号给nginx主进程的方式来停止nginx。
+nginx 支持下面几种信号：
+● TERM，INT 快速关闭；
+● QUIT  从容关闭；
+● HUP  平滑重启，重新加载配置文件；
+● USER1 重新打开日志文件；在切割日志时使用；
+● USER2 平滑升级可执行程序；
+● WINCH  从容关闭工作进程。
+查看nginx进程的ID：ps -ef | grep nginx
+                               master process的进程，它是主进程
+nginx.conf中指定了pid文件存放的路径 /var/run/nginx.pid，该文件中就是nginx当前的主进程号
+（1）从容停止 nginx
+[root@test ~]# kill -QUIT 8810
+[root@test ~]# kill -QUIT `/var/run/nginx.pid`
+（2）快速停止 nginx
+[root@test ~]# kill -TERM 8810
+[root@test ~]# kill -TERM `/var/run/nginx.pid`
+[root@test ~]# kill -INT 8810
+[root@test ~]# kill -INT `/var/run/nginx.pid`
+(3)强制停止所有 nginx 进程
+[root@test ~]# pkill -9 nginx
+ 
+六、fastcgi_params 和 fastcgi.conf
+默认这两个文件是存在的，且内容相同。文件内容
+[root@test ~]# vim /usr/local/nginx/conf/fastcgi_params
+fastcgi_param  QUERY_STRING       $query_string;
+fastcgi_param  REQUEST_METHOD     $request_method;
+fastcgi_param  CONTENT_TYPE       $content_type;
+fastcgi_param  CONTENT_LENGTH     $content_length;
+fastcgi_param  SCRIPT_FILENAME    $document_root$fastcgi_script_name;
+fastcgi_param  SCRIPT_NAME        $fastcgi_script_name;
+fastcgi_param  REQUEST_URI        $request_uri;
+fastcgi_param  DOCUMENT_URI       $document_uri;
+fastcgi_param  DOCUMENT_ROOT      $document_root;
+fastcgi_param  SERVER_PROTOCOL    $server_protocol;
+fastcgi_param  HTTPS              $https if_not_empty;
+fastcgi_param  GATEWAY_INTERFACE  CGI/1.1;
+fastcgi_param  SERVER_SOFTWARE    nginx/$nginx_version;
+fastcgi_param  REMOTE_ADDR        $remote_addr;
+fastcgi_param  REMOTE_PORT        $remote_port;
+fastcgi_param  SERVER_ADDR        $server_addr;
+fastcgi_param  SERVER_PORT        $server_port;
+fastcgi_param  SERVER_NAME        $server_name;
+# PHP only, required if PHP was built with --enable-force-cgi-redirect
+fastcgi_param  REDIRECT_STATUS    200;
+七、每天定时切割 nginx 日志
+（1）创建脚本
+[root@test ~]# vim /usr/local/nginx/sbin/cut_nginx_log.sh
+#!/bin/bash
+#This script run at 00:00
+#
+#The Nginx logs path
+logs_path="/var/log/nginx/"
+mkdir -p ${logs_path}$(date +%Y)/$(date +%m)/
+mv ${logs_path}access.log ${logs_path}$(date +%Y)/$(date +%m)/access_$(date +F -d -1days).log
+kill -USR1 'cat /var/run/nginx.pid`
+（2）设置 crontab，每天 00：00 切割日志
+[root@test ~]# crontab -e
+00 00 * * * /bin/bash /usr/local/nginx/sbin/cut_nginx_log.sh
+
+
+安装php
+一、安装相关依赖包（即支持库）
+1、libiconv （对文本进行编码间的转换，用它来处理中文各种编码之间的转换）
+tar -xzf libiconv-1.14.tar.gz
+cd libiconv-1.14
+./configure
+make && make install
+
+2、libmcrypt （实现加密功能的库）
+tar -xzf libmcrypt-2.5.8.tar.gz
+cd libmcrypt-2.5.8
+./configure
+make && make install
+cd libltdl/
+./configure --enable-ltdl-install
+make && make install
+
+3、mhash （哈稀函数库）
+tar xzf mhash-0.9.9.9.tar.gz
+cd mhash-0.9.9.9
+./configure
+make && make install
+ln -s /usr/local/lib/libmcrypt.la /usr/lib/libmcrypt.la
+ln -s /usr/local/lib/libmcrypt.so /usr/lib/libmcrypt.so
+ln -s /usr/local/lib/libmcrypt.so.4 /usr/lib/libmcrypt.so.4
+ln -s /usr/local/lib/libmcrypt.so.4.4.8 /usr/libmcrypt.so.4.4.8
+ln -s /usr/local/lib/libmhash.a /usr/lib/libmhash.a
+ln -s /usr/local/lib/libmhash.la /usr/lib/libmhash.la
+ln -s /usr/local/lib/libmhash.so /usr/lib/libmhash.so
+ln -s /usr/local/lib/libmhash.so.2 /usr/lib/libmhash.so.2
+ln -s /usr/local/lib/libmhash.so.2.0.1 /usr/lib/libmhash.so.2.0.1
+ldconfig            #不重新加模块，下面编译 mcrypt 时，检查编译环境会出错。
+------------------------------------------------------------------------------------------------------------------------------------------
+在#./configure 检查 php 编译环境时可能会出现以下错误。
+checking whether mhash &gt;= 0.8.15... no
+configure: error: "You need at least libmhash 0.8.15 to compile this program. http://mhash.sf.net/"
+原因：
+mhash编译默认安装路径是 /usr/local/,相关库在 /usr/local/lib 下。而 php 只搜索 /usr/lib/ 这个位置。所以会出现找不到 mhash 相关库的情况。
+解决方法：
+通过软链接的方法把 /usr/local/lib 目录下的 mhash 相关的库文件链接到 /usr/lib/ 目录下。
+------------------------------------------------------------------------------------------------------------------------------------
+
+4、mcrypt
+tar -xzf mcrypt-2.6.8.tar.gz
+cd mcrypt-2.6.8
+./configure
+make && make install
+
+源码安装 php（FastCGI 模式）
+PHP-FPM 是 一个 PHP FastCGI 进程管理器,即 PHP FastCGI Progress Manager。
+FastCGI 是一个可伸缩的，高速地在 web server 和脚本语言间交互的接口。FastCGI 的主要优点是把动态语言和 web server 分离开来。这种技术允许把 web server 和动态语言运行在不同的主机上，以大规模扩展和改进安全性而不损失生产效率。
+php-fpm 可以和任何支持远端 FastCGI 的 web server 工作。
+在 php-5.3.3 版本之后，php-fpm 已经被包含在 core 里边了，不再是第三方的包了。不需要再打补丁了。
+PHP-FPM 提供了更好的 PHP 进程管理方式，可以有效控制内存和进程、可以平滑重载 PHP 配置，比 spawn-fcgi 具有更多有点，所以被 PHP 官方收录了。在 ./configure 的时候带 -–enable-fpm 参数即可开启 PHP-FPM。
+
+mkdir /usr/local/php
+tar -xzf php-5.4.10.gz
+cd php-5.4.10
+./configure --prefix=/usr/local/php --with-config-file-path=/usr/local/php/etc --with-mysql=mysqlnd --with-mysqli=mysqlnd --with-iconv-dir=/usr/local --with-freetype-dir --with-jpeg-dir --with-png-dir --with-zlib --with-gd --with-libxml-dir=/usr --enable-xml --disable-rpath --enable-bcmath --enable-shmop --enable-sysvsem --enable-inline-optimization --with-curl --with-curlwrappers --enable-mbregex --enable-fpm --with-pdo-mysql=mysqlnd --enable-mbstring --with-mcrypt --enable-gd-native-ttf --with-openssl --with-mhash --enable-pcntl --enable-sockets --with-xmlrpc --enable-zip --enable-soap --without-pear
+-------------------------------------------------------------------------------------------------------------------------------------
+5.3.3 的编译参数
+./configure --prefix=/opt/php --with-config-file-path=/opt/php/etc --with-mysql=mysqlnd --with-mysqli=mysqlnd --with-iconv-dir=/opt/php --with-freetype-dir --with-jpeg-dir --with-png-dir --with-zlib --with-gd --with-libxml-dir=/opt/php/ --enable-xml --disable-rpath --enable-bcmath --enable-shmop --enable-sysvsem --enable-inline-optimization --with-curl --with-curlwrappers --enable-mbregex --enable-fpm --with-pdo-mysql=mysqlnd --enable-mbstring --with-mcrypt --enable-gd-native-ttf --with-openssl --with-mhash --enable-pcntl --enable-sockets --with-xmlrpc --enable-zip --enable-soap --without-pear --enable-calendar --enable-embedded-mysqli --enable-exif --enable-ftp
+------------------
+
+--with-pdo-mysql=/usr/local/mysql \ #可选参数，如果这里指定了，在安装pdo_mysql时就不用指定了。
+--with-mysql=mysqlnd   --with-mysqli=mysqlnd     --with-pdo-mysql=mysqlnd  mysql和 php不在同一个服务器上面需要是这样的设置 （mysqlnd  mysql native driver） 如果mysql和php在同一个服务器上面的话 ，需要指定本地的mysql的路劲）
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+make ZEND_EXTRA_LIBS='-liconv'
+make install
+
+----------------------------------------------------------------------------------------------------------------------------------------------------
+可能出现的错误：
+1、configure: error: xml2-config not found. Please check your libxml2 installation.
+解决方法：
+http://www.xmlsoft.org/
+源码安装 libxml2 或通过 yum 安装 libxml2-devel。
+（1）[root@test lnmp]# tar -xzf libxml2-tests-2.8.0.tar.gz
+（2）[root@test lnmp]#yum install  libxml2-devel
+2、 configure: error: Please reinstall the libcurl distribution -
+    easy.h should be in <curl-dir>/include/curl/
+解决方法：
+http://curl.haxx.se/
+源码安装 curl 或通过 yum 安装 libcurl-devel。
+（1）[root@test lnmp]# tar -xzf curl-7.26.0.tar.gz
+（2）[root@test lnmp]#yum install libcurl-devel
+3、configure: error: jpeglib.h not found.
+解决方法：
+http://www.ijg.org/
+源码安装 jpegsrc 或通过 yum 安装 libjpeg-devel。
+（1）[root@test lnmp]# tar -xzf jpegsrc.v8libeventd.tar.gz
+（2）[root@test lnmp]#yum install libjpeg-devel
+4、configure: error: png.h not found.
+解决方法：
+http://www.libpng.org/pub/png/libpng.html
+源码安装 libpng 或通过 yum 安装 libpng-devel。
+（1）[root@test lnmp]# tar -xzf libpng-1.5.12.tar.gz
+（2）[root@test lnmp]#yum install libpng-devel
+4、configure: error: freetype.h not found.
+解决方法：
+http://www.freetype.org/
+源码安装 freetype 或通过 yum 安装 libfreetype-devel。
+（1）[root@test lnmp]# tar -xzf freetype-2.4.10.tar.gz
+（2）[root@test lnmp]#yum install libfreetype-devel
+编译的时候可能出现的错误：
+5、Generating phar.php
+/data1/lnmp/php-5.4.4/sapi/cli/php: error while loading shared libraries: libmysqlclient.so.18: cannot open shared object file: No such file or directory
+make: *** [ext/phar/phar.php] Error 127
+解决方法：
+#echo "/usr/local/mysql/lib/" &gt;&gt; /etc/ld.so.conf.d/mysql-x86_64.conf
+6、PEAR package PHP_Archive not installed: generated phar will require PHP's phar extension be enabled.
+两种解决方法：
+（1）#./configure --without-pear
+（2）#wget http://pear.php.net/go-pear.phar
+    #php go-pear.phar
+7、configure: WARNING: unrecognized options: --enable-discard-path, --enable-safe-mode
+警告原因：
+之前 php-5.3.x 编译时加了 --enable-safe-mode --enable-discard-path --enable-fastcgi --enable-force-cgi-redirect选项，但是这个选项没必要，且会带来许多的麻烦，详解可以 google 一下，php-5.4.x 已经去掉了该选项，编译时可以 #./configure --help | grep “safe-mode” 查看一下，没有信息输出，表示已经不支持！
+------------------------------------------------------------------------------------------------------------------------------------------------------
+
+建立相关配置文件
+cp /usr/local/lnmp/php-5.4.10/php.ini-production  /usr/local/php/etc/php.ini
+vim /etc/profile
+找到 export PATH=$PATH:/usr/local/mysql/bin 这一行，
+修改为：export PATH=$PATH:/usr/local/mysql/bin:/usr/local/php/bin:/usr/local/php/sbin
+source /etc/profile
+
+安装 php 扩展模块(有时候需要安装mongo 和 redis  支持，方法一样)
+1、memcache
+tar -xzf memcache-3.0.6.tgz
+cd memcache-3.0.6
+/usr/local/php/bin/phpize
+./configure --enable-memcache --with-php-config=/usr/local/php/bin/php-config
+make  && make install
+Installing shared extensions:     /usr/local/php/lib/php/extensions/no-debug-non-zts-20100525/
+-----------------------------------------------------------------------------------------------------------------------------------------------
+在编译的时候会出现与新版本的 PHP 不兼容的问题。而到目前为止，没有更高的版本，也就是说 eaccelerator 不支持新版的 php。
+如果使用 php 5.4 以上版本，就只能放弃使用 eaccelerator 加速了。
+所以这里 eaccelerator 没有安装成功。可以采用 xcache 加速 PHP。
+------------------------------------------------------------------------------------------------------------------------------------------------
+2 xcache
+tar -xjf xcache-3.1.0.tar.bz2 
+cd xcache-3.1.0
+phpize
+ ./configure --with-php-config=/usr/local/php/bin/php-config
+make &&　make install
+
+3 ImageMagick （Linux下强大的图象处理函数，与GD类似）
+tar -xzf ImageMagick.tar.gz
+cd ImageMagick-6.5.1-2
+./configure
+ make && make install
+
+4 imagick （连接 PHP 和 ImageMagick 的通道）
+tar -xzf imagick-3.1.0RC2.tgz
+cd imagick-3.1.0RC2
+phpize
+./configure --with-php-config=/usr/local/php/bin/php-config
+make && make install 
+Installing shared extensions:     /usr/local/php/lib/php/extensions/no-debug-non-zts-20100525/
+Installing header files:          /usr/local/php/include/php/
+-------------------------------------------------------------------------------------------------------------------------------------
+在 make 编译的时候可能会出现下面的错误：
+In file included from /data1/lnmp/imagick-3.1.0RC2/imagick_file.c:21:
+/data1/lnmp/imagick-3.1.0RC2/php_imagick.h:49:31: error: wand/MagickWand.h: No such file or directory
+解决方法：
+[root@test imagick-3.1.0RC2]# yum install gtk+-devel #不清楚该软件包的作用。
+#指定 ImageMagick 库的安装路径。这里采用将其路径宣告为当前环境变量的方法：
+[root@test imagick-3.1.0RC2]# export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig/
+[root@test imagick-3.1.0RC2]# rm -rf Makefile config.status config.h   #删除相关文件后，再重新编译。
+在 ./configure 的时候，会出现下面两行，说明 MagickWand.h 头文件可以被找到。这就把问题解决了。
+checking ImageMagick MagickWand API configuration program... found in /usr/local/bin/MagickWand-config
+checking if ImageMagick version is at least 6.2.4... found version 6.7.8 Q16
+checking for MagickWand.h header file... found in /usr/local/include/ImageMagick/wand/MagickWand.h
+-----------------------------------------------------------------------------------------------------------------------------------------------
+
+配置php
+1、修改 php.ini 文件，使 php 支持已安装的扩展功能
+[root@test ~]# vim /usr/local/php/etc/php.ini
+找到 extension_dir = "/"；修改如下：
+extension_dir = "/usr/local/php/lib/php/extensions/no-debug-non-zts-20100525"
+extension = "imagick.so"
+extension = "memcache.so"
+再查找 output_buffering = Off 修改为 output_buffering = On
+short_open_tag = Off 修改为 short_open_tag = On (开启短格式支持)
+expose_php = On 修改为 expose_php = Off (在curl中隐藏php版本号)
+date.timezone = Asia/Shanghai
+再查找; cgi.fix_pathinfo=0
+修改为cgi.fix_pathinfo=0，防止Nginx文件类型错误解析漏洞。
+我们安装的相关扩展模块都在 /usr/local/php/lib/php/extensions/no-debug-non-zts-20100525 目录下：
+imagick.so
+memcache.so
+xcache.so
+
+
+2）配置 xcache，整合php与xcache
+[root@test ~]# cd /usr/local/lnmp/xcache-3.1.0
+[root@test xcache-2.0.1]# cat xcache.ini >> /usr/local/php/etc/php.ini    #xcache.ini文件在xcache的源码目录中。
+[root@test ~]# vim /usr/local/php/etc/php.ini
+找到 extension（xcahe的配置文件中） 开头的行，修改如下： 
+extension = "/usr/local/php/lib/php/extensions/no-debug-non-zts-20100525/xcache.so
+注意：
+如果php.ini文件中有多条extension指令行，要确保此新增的行排在第一位。配置完成后，重启php-fpm即生效。
+
+
+2、配置 php-fpm
+（1）建立相关配置文件
+[root@test ~]# cd /usr/local/php/etc/
+[root@test etc]# mv php-fpm.conf.default php-fpm.conf
+[root@test etc]# cd /usr/local/lnmp/php-5.4.10
+[root@test php-5.4.4]# cp sapi/fpm/init.d.php-fpm /etc/rc.d/init.d/php-fpm
+[root@test php-5.4.4]# vim /etc/rc.d/init.d/php-fpm
+找到：php_fpm_PID=${prefix}/var/run/php-fpm.pid，删掉${prefix}；
+修改为：php_fpm_PID=/var/run/php-fpm.pid；
+之所以这样修改是因为我在 php-fpm.conf 中设置的pid的位置为：/var/run/php-fpm.pid。
+（2）修改 php-fpm.conf 配置文件
+cd /usr/local/php/etc/
+mkdir /var/log/php
+[root@test etc]# vim php-fpm.conf
+[global]
+pid = /var/run/php-fpm.pid
+error_log = /var/log/php/php-fpm.log
+log_level = notice
+[www]
+listen = 127.0.0.1:9000
+user = nginx #这是因为 nginx web 服务也是个这个用户。
+group = nginx
+pm = dynamic
+pm.max_children = 50
+pm.start_servers = 20
+pm.min_spare_servers = 5
+pm.max_spare_servers = 35
+pm.max_requests = 5000
+[root@test etc]# php-fpm -t  #测试 php-fpm 配置
+（3）设置开机启动 php-fpm （通过管理 FastCGI 进程）
+[root@test ~]# chmod 755 /etc/rc.d/init.d/php-fpm
+[root@test ~]# chkconfig --level 35 php-fpm on
+[root@test ~]# chkconfig --list php-fpm
+php-fpm         0:off   1:off   2:on    3:on    4:on    5:on    6:off
+[root@test ~]# service php-fpm
+Usage: /etc/init.d/php-fpm {start|stop|force-quit|restart|reload}
+（4）启动 php-fpm
+[root@test ~]# service php-fpm start
+或
+[root@test ~]# /usr/local/php/sbin/php-fpm
+测试 ps -ef | grep php-fpm
+        netstat -lnp | grep :9000
+
+
+整合 Nginx PHP
+一、整合 nginx 与 PHP
+1、修改 /usr/local/nginx/conf/nginx.conf 配置文件
+（1）使 nginx 支持 php 格式主页
+[root@test ~]# vim /usr/local/nginx/conf/nginx.conf
+location / {
+            root   html;   #必须设置 web 根目录
+            index index.php index.html index.htm;  #添加 php 格式的主页
+        }
+--------------------------------------------------------------------------
+注意：
+nginx 默认的 web 根目录是 /usr/local/nginx/html；它的 nginx.conf 配置文件中 web 的根目录参数默认为：root html;这里使用相对路径，相对于 nginx 安装目录的路径。
+--------------------------------------------------------------------------
+（2）启用如下选项
+location ~ \.php$ {
+root           html;  #必须设置 web 根目录
+fastcgi_pass 127.0.0.1:9000;  #定义 fastcgi 所监听的 IP 地址和端口号，也可以是 socket。
+fastcgi_index  index.php;
+fastcgi_param  SCRIPT_FILENAME $document_root$fastcgi_script_name;
+#PHP 使用 SCRIPT_FILENAME 参数决定需要执行哪个脚本；这里一定要设为 web 目录的绝对路径或是变量 $document_root。这里非常重要，配置错误有可能会出现php空白页，或找不到页面的错误。
+fastcgi_param  QUERY_STRING     $query_string; #QUERY_STRING 包含请求中的某些参数。
+            include        fastcgi_params;
+        }
+如果要处理POST请求，则需要另外增加三个参数：
+fastcgi_param  REQUEST_METHOD   $request_method;
+fastcgi_param  CONTENT_TYPE     $content_type;
+fastcgi_param  CONTENT_LENGTH   $content_length;
+[root@test ~]# service nginxd reload | nginx -s reload
+
+
+2、编辑 fastcgi.conf 和 fastcgi_params
+默认这两个文件是存在的，不需要修改，默认即可。
+文件内容：
+[root@test ~]# vim /usr/local/nginx/conf/fastcgi.conf
+fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+fastcgi_param  QUERY_STRING       $query_string;
+fastcgi_param  REQUEST_METHOD     $request_method;
+fastcgi_param  CONTENT_TYPE       $content_type;
+fastcgi_param  CONTENT_LENGTH     $content_length;
+fastcgi_param  SCRIPT_NAME        $fastcgi_script_name;
+fastcgi_param  REQUEST_URI        $request_uri;
+fastcgi_param  DOCUMENT_URI       $document_uri;
+fastcgi_param  DOCUMENT_ROOT      $document_root;
+fastcgi_param  SERVER_PROTOCOL    $server_protocol;
+fastcgi_param  HTTPS              $https if_not_empty;
+fastcgi_param  GATEWAY_INTERFACE  CGI/1.1;
+fastcgi_param  SERVER_SOFTWARE    nginx/$nginx_version;
+fastcgi_param  REMOTE_ADDR        $remote_addr;
+fastcgi_param  REMOTE_PORT        $remote_port;
+fastcgi_param  SERVER_ADDR        $server_addr;
+fastcgi_param  SERVER_PORT        $server_port;
+fastcgi_param  SERVER_NAME        $server_name;
+# PHP only, required if PHP was built with --enable-force-cgi-redirect
+fastcgi_param  REDIRECT_STATUS    200;
+二、测试 nginx 与 PHP
+[root@test ~]# vim /usr/local/nginx/html/index.php
+输入以下内容：
+<?php
+phpinfo();
+?>
+注意：测试php与MySQL
+可以使用下面的php代码用来测试php是否可以连接MySQL数据库：
+-------------------------------------------------------
+<?php
+$link=mysql_connect('localhost','root','数据库密码');
+if ($link)
+echo "successful";
+else
+echo "Faile";
+mysql_close();
+?>
+
+
+三、基于域名的虚拟主机
+虚拟主机可以在一台服务器上面，建立多个可以独立访问web网站，且具有独立域名和完整的Internet服务器功能（www、FTP、Email等），同一台服务器上的虚拟主机是完全独立的。
+利用虚拟主机，不用为每个要运行的网站提供一台单独的nginx服务器或单独运行一组nginx进程。虚拟主机提供了在同一台服务器，同一组nginx进程上运行多个网站的功能。
+Nginx可以配置多种虚拟主机：（1）基于IP的虚拟主机；（2）基于端口的虚拟主机；（3）基于域名的虚拟主机。
+这里以最常见的虚拟主机为例：基于域名的虚拟主机。
+第一个虚拟机：WordPress博客：
+Web服务IP：192.168.10.250:80
+域名：www.wordpressbt.com
+Web根目录：/data1/html/wordpress/
+使用的php主页：wordpress-3.4.1
+第二个虚拟机：php相关info
+Web服务IP：192.168.10.250:80
+域名：www.phpinfo.com
+Web根目录：/data1/html/phpinfo/
+使用的php主页：通过建立一个php主页，列出当前php相关配置信息。
+index.php内容如下：
+<?php
+phpinfo();
+?>
+DNS与nginx位于同一台Server:
+IP:192.168.10.250
+访问web的客户端：
+OS：Windows 7 64bit ultimate
+IP：192.168.10.10
+DNS:192.168.10.250
+浏览器：chrome
+客户端与服务器通过一台Cisco Catalyst 2960交换机相连。
+1、建立相关文件和目录
+[root@test ~]# mkdir -p /data1/html/phpinfo
+[root@test ~]# cp index.php /data1/html/phpinfo/ #将创建的index.php复制到www.phpinfo.com虚拟机web根目录
+[root@test ~]# cd /data1/lnmp/
+[root@test lnmp]# unzip wordpress-3.4.1-zh_CN.zip
+[root@test lnmp]# mv wordpress ../html/
+[root@test lnmp]# chmod -R nginx:nginx /data1/html/
+2、修改 /usr/local/nginx/conf/nginx.conf配置文件
+[root@test ~]# vim /usr/local/nginx/conf/nginx.conf
+在http段加入以下内容：
+第一个虚拟机：www.wordpressbt.com
+server {
+        listen       80;
+        server_name  www.wordpressbt.com;
+        access_log  /var/log/nginx/access_wp.log;
+        location / {
+            root   /data1/html/wordpress;
+            index  index.html index.htm index.php;
+        }
+        location ~ \.php$ {
+            root           /data1/html/wordpress;
+           fastcgi_pass   127.0.0.1:9000;
+           fastcgi_index  index.php;
+            fastcgi_param  SCRIPT_FILENAME /data1/html/wordpress/$fastcgi_script_name;
+            fastcgi_param  QUERY_STRING     $query_string;
+            include        fastcgi_params;
+        }
+    }
+第二个虚拟机：www.phpinfo.com
+server {
+        listen       80;
+        server_name  www.phpinfo.com;
+        access_log  /var/log/nginx/access_info.log;
+        location / {
+            root   /data1/html/phpinfo;
+            index  index.html index.htm index.php;
+        }
+        location ~ \.php$ {
+            root           /data1/html/phpinfo;
+           fastcgi_pass   127.0.0.1:9000;
+           fastcgi_index  index.php;
+            fastcgi_param  SCRIPT_FILENAME /data1/html/phpinfo/$fastcgi_script_name;
+            fastcgi_param  QUERY_STRING     $query_string;
+            include        fastcgi_params;
+        }
+    }
+3、修改DNS记录
+DNS和nginx是在同一台Server上，DNS是以前配置好的。现在直接拿来用。这里只添加正向查询区域。
+（1）修改 named.zones 主配置文件
+[root@test ~]# vim /var/named/chroot/etc/named.zones
+加入以下两个区域：
+zone "wordpressbt.com" IN {
+        type master;
+        file "wordpressbt.com.zero"; #这是相对路径，相对于安装目录的路径 var/named/目录。
+        allow-update { none;};
+};
+zone "phpinfo.com" IN {
+        type master;
+        file "phpinfo.com.zero";
+        allow-update { none;};
+};
+（2）创建 wordpressbt.com.zero 和 phpinfo.com.zero 区域文件
+[root@test ~]# vim /var/named/chroot/var/named/wordpressbt.com.zero
+
+[root@test ~]# vim /var/named/chroot/var/named/phpinfo.com.zero
+
+[root@test ~]# service named restart
+4、修改用来访问web服务的Windows 7客户端IP地址和DNS
+打开本地链接，修改如下图：
+
+5、通过域名访问测试验证
+（1）访问域名：www.wordpressbt.com
+成功访问，测试成功。
+
+单击“创建配置文件”，如下图：
+
+单击“现在就开始！”，如下图：
+
+在数据库中创建一个用于存储wordpress相关数据的数据库，数据库名也为wordpress，也可以是其它的名字，再添加一个用户对该数据库有完全控制权限，用户名为：wpuser。在上面这个页面填写相关正确信息，再提交。根据提示一步一步做就可以了。这样我们就在自己服务器上建立一个wordpress博客了。下图是wordpress后台。
+
+（2）访问域名：www.phpinfo.com
+成功访问，测试成功。
+
+现在终于完成了LNMP环境，安装很简单。最重要的是根据实际的生产环境调优。合理配置 nginx.conf、php.ini、php-fpm.conf、my.cnf，充分发挥硬件性能。没有一挫而就。
+nginx真的很强大；在生产中，可以根据实际情况进行动静分离，MySQL读写分离，负载均衡，以及高可用的架构
+
+
+
+
+
+
+安装MySQL(另一个服务器上面）
+1、ncurses
+[root@test ~]# cd /data1/lnmp/
+[root@test lnmp]# tar -xzf ncurses-5.9.tar.gz
+[root@test lnmp]# cd ncurses-5.9
+[root@test ncurses-5.9]# ./configure
+[root@test ncurses-5.9]# make && make install
+2、bison
+[root@test lnmp]# tar -xzf bison-2.5.tar.gz
+[root@test lnmp]# cd bison-2.5
+[root@test bison-2.5]# ./configure
+[root@test bison-2.5]# make && make install
+
+tar -xzf cmake-2.8.8.tar.gz
+cd cmake-2.8.8
+./configure
+make && make install
+
+groupadd mysql
+useradd -M -g mysql -s /sbin/nologin mysql
+mkdir /usr/local/mysql
+mkdir -p /var/lock/mysql
+mkdir -p /var/run/mysql
+mkdir -p /var/log/mysql
+mkdir  /usr/local/mysql/date
+chown -R mysql:mysql /usr/local/mysql
+chown -R mysql:mysql /var/run/mysql
+chown -R mysql:mysql /var/lock/mysql
+chown -R mysql:mysql /var/log/mysql
+chown -R mysql:mysql /usr/local/mysql/date
+
+tar -xzf mysql-5.5.25a.tar.gz
+cd mysql-5.5.25a
+cmake . -DCMAKE_INSTALL_PREFIX=/usr/local/mysql \
+-DSYSCONFDIR=/etc \ 
+-DMYSQL_UNIX_ADDR=/tmp/mysqld.sock \  
+-DMYSQL_DATADIR=/usr/local/mysql_db \ 
+-DEXTRA_CHARSETS=all \
+-DDEFAULT_CHARSET=utf8 \
+-DWITH_READLINE=1 \
+-DWITH_SSL=system \
+-DWITH_DEBUG=0 \
+-DWITH_PARTITION_STORAGE_ENGINE=1 \
+-DWITH_INNOBASE_STORAGE_ENGINE=1 \
+-DWITH_ARCHIVE_STORAGE_ENGINE=1 \
+-DWITH_FEDERATED_STORAGE_ENGINE=1 \
+-DWITH_BLACKHOLE_STORAGE_ENGINE=1 \ 
+-DINSTALL_LAYOUT=STANDALONE \
+-DENABLED_LOCAL_INFILE=1 \
+-DENABLED_PROFILING=0 \
+-DMYSQL_MAINTAINER_MODE=1 \
+-DWITH_EMBEDDED_SERVER=1 \ 
+-DMYSQL_TCP_PORT=3306 \
+-DMYSQL_USER=mysql                          (这一步骤的时候，最好弄个脚本，vim有错误的地方可以查看出来的）\ 与内容之间                                                                                                                                                                       空一格
+
+make
+make install
+
+
+建立 MySQL 配置文件
+[root@test mysql-5.5.25a]# cp support-files/my-innodb-heavy-4G.cnf /etc/my.cnf
+cp support-files/mysql.server /etc/rc.d/init.d/mysql
+ chmod 755 /etc/rc.d/init.d/mysql
+echo "export PATH=$PATH:/usr/local/mysql/bin" >>/etc/profile
+ source /etc/profile
+
+---------------------------------------------------------------------------------------------------------------------------------------
+注意：
+在mysql-5.5.25a/support-files下共有5种my.cnf配置文件。
+★ my-small.cnf：适用于小型数据库，该配置文件专为物理内存小于64MB的服务器而设计。
+★ my-medium.cnf：适用于物理内存在32MB到64MB之间的专用于运行MySQL服务器，或物理内存在128MB以上。
+★ my-large.cnf：适用于物理内存在512MB以上的专用于运行MySQL数据库的服务器。
+★ my-huge.cnf：适用于物理内存在1GB到2GB之间的专用于运行MySQL数据库服务器。
+★ my-innodb-heavy-4G.cnf：适用于服务器物理内存在4GB以上，且需要运行复杂查询的MySQL数据库。
+-----------------------------------------------------------------------------------------------------------------------------------------
+5、修改 /etc/rc.d/init.d/mysqld 脚本文件
+根据 cmake 时指定的配置参数和 my.cnf 配置文件中的参数修改 mysqld 这个脚本中的变量；my.cnf 配置文件中的参数优先于 cmake 时指定的参数。如果 my.cnf 配置文件没有设置对应的参数，则数据库运行时会以 cmake 时指定的参数为准。my.cnf 中参数优先级高于 cmake 时的配置参数。
+[root@test ~]# vim /etc/rc.d/init.d/mysqld
+basedir=/usr/local/mysql
+datadir=/usr/local/mysql_db
+lockdir='/var/lock/mysql'
+lock_file_path="$lockdir/mysql.lock"
+mysqld_pid_file_path = /var/run/mysql/mysql.pid
+
+6、修改 /etc/my.cnf 配置文件
+根据 cmake 时的配置修改 my.cnf 文件的部分参数。如果 my.cnf 配置文件没有设置对应的参数，则数据库运行时会以 cmake 时指定的参数为准。my.cnf 中参数优先级高于 cmake 时的配置参数。
+[root@test ~]# vim  /etc/my.cnf
+# The following options will be passed to all MySQL clients
+[client]
+#password       = your_password
+port            = 3306
+socket          = /tmp/mysql.sock
+# The MySQL server
+[mysqld]
+user            = mysql
+port            = 3306
+socket          = /tmp/mysql.sock
+basedir = /usr/local/mysql
+datadir         = /data1/mysql_db
+pid-file        = /var/run/mysql/mysql.pid
+log-error       = /var/log/mysql/mysql.log
+character-set-server = utf8
+7、初始化数据库
+[root@test scripts]# pwd
+/usr/local/mysql/scripts
+[root@test scripts]# ll
+total 16
+-rwxr-xr-x. 1 mysql mysql 14816 Jul 13 14:50 mysql_install_db
+[root@test scripts]#  /usr/local/mysql/scripts/mysql_install_db --user=mysql --basedir=/usr/local/mysql --datadir=/usr/local/mysql/data &
+#如果上面初始化数据库时指定了 --user=mysql，这一步就不用做了。只需把 mysql_db/ 这个目录的所有者和群组改为 mysql 这个用户即可，而这一步，我们在建立数据库目录的时候就已经做了。
+----------------------------------------------------------------------------------------------------------
+1] 23190
+[root@centos4 scripts]# WARNING: The host 'centos4' could not be looked up with resolveip.
+This probably means that your libc libraries are not 100 % compatible
+with this binary MySQL version. The MySQL daemon, mysqld, should work
+normally with the exception that host name resolving will not work.
+This means that you should use IP addresses instead of hostnames
+when specifying MySQL privileges !                                             （初始化出现的问题）
+--------------------------------------------------------------------------------------------------
+注意：
+mysql_install_db 脚本的目的是生成新的 mysql 授权表。它不覆盖已有的 mysql 授权表，并且它不影响任何其它数据。
+如果你想要重新创建授权表，首先停止 mysqld 服务器（如果它正运行）。然后重新命名数据目录下的 mysql/目录并保存，然后运行 mysql_install_db。
+本例中可用的参数：
+#./mysql_install_db --user=mysql \
+--defaults-file=/etc/my.cnf \
+--basedir=/usr/local/mysql/ \
+--datadir=/data1/mysql_db
+--------------------------------------------------------------------------
+8、设置开机启动 mysql
+[root@test ~]# chkconfig --level 35 mysqld on
+[root@test ~]# service mysql start
+--------------------------------------------------------------------------
+注意：启动MySQL时出现以下错误：
+[root@test ~]# service mysqld start
+Starting MySQL.The server quit without updating PID file (/[FAILED]mysql/mysql.pid).
+[root@test ~]# tail /var/log/mysql.log
+120713 16:26:12 [Note] /usr/local/mysql/bin/mysqld: Shutdown complete
+120713 16:26:12 mysqld_safe mysqld from pid file /var/run/mysql/mysql.pid ended
+120713 16:41:36 mysqld_safe Starting mysqld daemon with databases from /data1/mysql_db
+/usr/local/mysql/bin/mysqld: Character set 'all' is not a compiled character set and is not specified in the '/usr/local/mysql/share/charsets/Index.xml' file
+120713 16:41:36 [ERROR] Aborting
+120713 16:41:36 [Note] /usr/local/mysql/bin/mysqld: Shutdown complete
+120713 16:41:36 mysqld_safe mysqld from pid file /var/run/mysql/mysql.pid ended
+[root@test ~]#
+错误原因：
+这是因为我在编译 MySQL 的时候加上了 -DDEFAULT_CHARSET=all 参数。最好设为-DDEFAULT_CHARSET=utf8。
+解决方法：
+修改配置文件/etc/my.cnf文件，在[mysqld]下加入character-set-server = utf8。
+[mysqld]
+character-set-server = utf8
+--------------------------------------------------------------------------------------------------
+9、设置 mysql 用户 root 的密码
+[root@test ~]# mysqladmin -u root -p password 123456
+[root@test ~]# mysql -u root -p -S /tmp/mysql.sock
+Enter password:  <-----输入上面设置的数据库管理员密码：123456，回车即可登录数据库。
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 3
+Server version: 5.5.25a-log Source distribution
+Copyright (c) 2000, 2011, Oracle and/or its affiliates. All rights reserved.
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+mysql>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

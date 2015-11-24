@@ -1,0 +1,203 @@
+1 需要jdk的版本是1.6或以上  
+下载jdk.bin   sh jdk.bin
+2 环境变量
+vim /etc/profile
+export JAVA_HOME=/.../jdk
+export CLASSPATH=$CLASSPATH:$JAVA_HOME/lib:$JAVA_HOME/jre/lib
+export PATH=$JAVA_HOME/bin:$JAVA_HOME/jre/bin:$PATH:$HOME/bin
+export RESIN_HOME=/.../resin
+
+3 下载resin 解压（不用编译），修改配置文件
+4 resin.conf
+把<server_default> ...   <server_default>之间的内容改掉，然后修改内容如下
+<server id='oldboy' address='10.0.0.8' port='6911' watchdog-port="6921">   id  开启的时候指定
+      <http address="*" port="8080"/>                                                                   独立的webserver用
+      <jvm-arg>-Xmx256m</jvm-arg>
+      <jvm-arg>-Xss1m</jvm-arg>
+      <jvm-arg>-Xdebug</jvm-arg>
+      <jvm-arg>-Dcom.sun.management.jmxremote</jvm-arg>
+      <memory-free-min>1M</memory-free-min>
+      <thread-max>256</thread-max>
+      <socket-timeout>65s</socket-timeout>
+      <keepalive-max>128</keepalive-max>
+      <keepalive-timeout>15s</keepalive-timeout>
+</server>
+
+5  resin 的启动     /opt/resin-3.1.3/bin/httpd.sh -server liang   start      liang  指的是serverID    手动启动
+启动脚本
+#!/bin/bash
+# chkconfig: 345 85 15                                                                 #chkconfig --add resind   用，没有这句不能添加chkconfig
+./etc/init.d/functions
+StartPath='/opt/resin/bin/httpd.sh'
+ResinLog='/var/log/resinlog'
+[ ! -d $ResinLog ] && mkdir -p $ResinLog
+
+resind()
+{
+for id in liang                                                                                  #如果有多个实例可以写在这里面
+do
+    $StartPath -server $id $1 >> $ResinLog/resin_startup.log
+    if [ $? -eq 0 ]
+    then
+        action  "$1 $id resin ..."  /bin/true
+    else
+        action  "$1 $id resin ..."  /bin/false
+    fi  
+done
+}
+
+case "$1" in
+    start)
+        resind $1
+        echo '-------checking------'
+        sleep 5
+        netstat -lnt | egrep "80|69"
+        echo '------check over----'
+        ;;  
+     stop)
+        resind $1
+        ;;
+     restart)
+        resind stop
+        resind start
+        ;;
+     *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+esac
+
+exit 0
+，最主要的就是 resind的那个函数
+服务自带的脚本    /opt/resin/contrib/init.resin.in ，最好写上检查的功能，列如端口号
+如果用crontab的话   定时启动resin，需要在脚本里面把java的环境变量
+
+6 resin配置多个服务的话，需要配置server 和 host,   server和host是对应的 
+
+host的配置
+<!-- create  first virtual host by old-boy -->
+<host id="www.oldboy.cc" root-directory="/application/resin/webapps">
+       <host-alias>www.etiantian.org</host-alias>
+
+      <!--
+         - configures an explicit root web-app matching the
+         - webapp's ROOT
+        -->
+        <web-app id="/" root-directory="/application/resin/webapps/ROOT">
+                <session-config cookie-domain="etiantian.org" reuse-session-id="true">
+                        <session-timeout>5</session-timeout>
+                        <session-max>12000</session-max>
+                </session-config>
+                <servlet-mapping servlet-class='com.caucho.servlets.ResinStatusServlet'>
+                        <url-pattern>/resin-status-oldboy.org</url-pattern>
+                        <init enable="read"/>
+                </servlet-mapping>
+                        <error-page   error-code='404'   location='/tips/404.html'/>
+
+        </web-app>
+        <web-app id="/resin-admin-oldboy.org" root-directory="${resin.home}/php/admin">
+                <character-encoding>utf-8</character-encoding>
+                <prologue>
+                        <resin:set var="resin_admin_external" value="true"/>
+                        <resin:set var="resin_admin_insecure" value="true"/>
+                </prologue>
+                <security-constraint>
+                        <web-resource-collection>
+                                <url-pattern>/*</url-pattern>
+                        </web-resource-collection>
+                </security-constraint>
+      </web-app>
+        <stderr-log path='/app/log/resinlog/www_stderr.log'
+                      rollover-period='1W'/>
+        <stdout-log path='/app/log/resinlog/www_stdout.log'
+                      rollover-period='1W'/>
+</host>
+
+  <!-- create  second virtual host by old-boy -->
+<host id="blog.oldboy.cc" root-directory="/application/resin/webapps">
+       <host-alias>blog.etiantian.org</host-alias>
+
+      <!--
+         - configures an explicit root web-app matching the
+         - webapp's ROOT
+        -->
+        <web-app id="/" root-directory="/application/resin/webapps/oldboy">
+                <session-config cookie-domain="etiantian.org" reuse-session-id="true">
+                        <session-timeout>5</session-timeout>
+                        <session-max>12000</session-max>
+                </session-config>
+                <servlet-mapping servlet-class='com.caucho.servlets.ResinStatusServlet'>
+                        <url-pattern>/resin-status-oldboy.org</url-pattern>
+                        <init enable="read"/>
+                </servlet-mapping>
+                        <error-page   error-code='404'   location='/tips/404.html'/>
+
+        </web-app>
+        <web-app id="/resin-admin-oldboy.org" root-directory="${resin.home}/php/admin">
+                <character-encoding>utf-8</character-encoding>
+                <prologue>
+                        <resin:set var="resin_admin_external" value="true"/>
+                        <resin:set var="resin_admin_insecure" value="true"/>
+                </prologue>
+                <security-constraint>
+                        <web-resource-collection>
+                                <url-pattern>/*</url-pattern>
+                        </web-resource-collection>
+                </security-constraint>
+      </web-app>
+        <stderr-log path='/app/log/resinlog/blog_stderr.log'
+                      rollover-period='1W'/>
+        <stdout-log path='/app/log/resinlog/blog_stdout.log'
+                      rollover-period='1W'/>
+</host>
+
+7 resin 配置别名功能
+ <host id="www.baidu.com" root-directory="/data/resin/webapps">
+<host-alias>bbc.baidu.com</host-alias>
+<host-alias>bbs.baidu.org</host-alias>
+
+8 resin 配置错误的页面
+<error-page  error-code="404" location="/../">
+ 错误页面配置内容；的根目录是resin站点的根目录，例如：/application/resin/webapps/ROOT
+
+9 配置多实例resin
+   把安装目录拷贝一份，修改名字，配置文件IP端口，目录更改，修改启动脚本，然后启动
+
+10 resin的调优
+  
+生产环境下的配置
+<server id='xxx' address='10.0.0.8' port='6911' watchdog-port="6921">   id  开启的时候指定
+      <http address="10.0.0.8" port="8080"/>                                                                   独立的webserver用
+      <jvm-arg>-Xmx1024m</jvm-arg>                                   最大堆大小  
+      <jvm-arg>-Xms1024m</jvm-arg>                                    初始堆大小   一般和最大堆大小设为相同，减少运行期间系统在内存申请花费的开销
+       <jvm-arg>-Xmn256m</jvm-arg>
+       <jvm-arg>-XX:PermSize=128m</jvm-arg>
+       <jvm-arg>-XX:MaxPermSize=256m</jvm-arg>
+       <jvm-arg>-Dcom.sun.management.jmxremote</jvm-arg>
+       <memory-free-min>1M</memory-free-min>     JVM内存小于这个指定值，resin会gracefully重启，释放泄露的内存空间
+       <thread-max>1024</thread-max>
+       <socket-timeout>15s</socket-timeout>
+        <keepalive-max>256</keepalive-max>
+        <keepalive-timeout>5s</keepalive-timeout>
+</server>
+
+jvm调优 以及jvm的监控工具   网上查看
+jps
+jstat  查看垃圾回收的情况
+jmap java内存dump出来
+jstack -l 进程 ID
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
