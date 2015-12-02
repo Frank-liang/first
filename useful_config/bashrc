@@ -1,0 +1,14 @@
+/bin/bash /etc/user_login.sh
+if unset PROMPT_COMMAND > /dev/null 2>&1
+then
+        declare -r REAL_USER=$(who am i|awk '{print $1}')
+        declare -r LOGINTIME=$(date "+%s")
+        export  PROMPT_COMMAND='$( command=$(history 1 | { read x y; echo $y; });echo "[$(date "+%Y-%m-%d %T")] $HOSTNAME $LOGINTIME user=$REAL_USER@$USER from=$SSH_CLIENT pwd=$PWD command:$command">>/var/log/histlog )'
+        declare -r PROMPT_COMMAND
+        PS1='[\u@\h \W]\$ '
+fi
+alias grep='grep --color=auto'
+alias vi='vim'
+HISTTIMEFORMAT="%Y-%m-%d %H:%M:%S   "
+HISTFILESIZE=10000
+HISTSIZE=10000
